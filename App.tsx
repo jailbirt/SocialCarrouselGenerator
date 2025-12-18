@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Slide, Palette, ChatMessage, SlideElement } from './types';
 import { generateCarouselStructure, generateSlideImage, editSlideImage, determineEditIntent, updateSlideContent, updateSpecificSlideField } from './services/geminiService';
 import { SlideView } from './components/SlideView';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { 
   Send, 
@@ -363,26 +363,39 @@ const App: React.FC = () => {
     if (slides.length === 0) return;
     setLoadingMessage('Exporting PDF...');
     setIsGenerating(true);
+
+    try {
+      await document.fonts.ready;
+    } catch (e) {
+      console.warn("Font loading check failed", e);
+    }
+    
+    // Slight delay to ensure DOM is stable
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     try {
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [1080, 1350] });
+      
       for (let i = 0; i < slides.length; i++) {
         const slideElement = document.getElementById(`slide-render-${slides[i].id}`);
         if (slideElement) {
-          const canvas = await html2canvas(slideElement, {
-            scale: 1, useCORS: true, logging: false,
-            onclone: (clonedDoc) => {
-              const el = clonedDoc.getElementById(`slide-render-${slides[i].id}`);
-              if (el) { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
-            }
+          // Use html-to-image (toPng) instead of html2canvas
+          // This uses SVG foreignObject rendering which is much more accurate for CSS layouts
+          const imgData = await toPng(slideElement, {
+            quality: 0.95,
+            pixelRatio: 2, // High resolution for crisp text
+            backgroundColor: '#ffffff',
+            cacheBust: true, // Ensures fonts are fetched freshly if needed
           });
-          const imgData = canvas.toDataURL('image/png');
+
           if (i > 0) pdf.addPage([1080, 1350]);
           pdf.addImage(imgData, 'PNG', 0, 0, 1080, 1350);
         }
       }
       pdf.save('linkedin-carousel.pdf');
     } catch (error) {
-      setErrorMessage("Failed to export PDF. Please check your browser settings.");
+      console.error(error);
+      setErrorMessage("Failed to export PDF. Please check your browser settings or try again.");
     } finally {
       setIsGenerating(false);
       setLoadingMessage('');
@@ -711,7 +724,7 @@ const App: React.FC = () => {
 
         {/* Slides Container - Clean Padding */}
         <div 
-          className="flex-1 overflow-x-auto overflow-y-hidden p-8 flex items-center gap-12 snap-x snap-mandatory" 
+          className={`flex-1 overflow-x-auto overflow-y-hidden p-8 flex items-center gap-12 snap-x snap-mandatory ${isGenerating ? 'pointer-events-none opacity-50' : ''}`}
           ref={slidesContainerRef}
           onClick={() => setSelectedElement(null)}
         >
@@ -747,7 +760,7 @@ const App: React.FC = () => {
                     scale={0.36} 
                   />
                   {/* Hidden Render for PDF */}
-                  <div className="absolute top-0 left-0 -z-50 opacity-0 pointer-events-none">
+                  <div className="absolute top-0 -left-[9999px] -z-50 pointer-events-none">
                      <div id={`slide-render-${slide.id}`}>
                         <SlideView 
                            slide={slide}

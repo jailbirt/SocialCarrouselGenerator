@@ -55,39 +55,44 @@ export const SlideView: React.FC<SlideViewProps> = ({
     const parts = cleanText.split(/(\*\*[\s\S]*?\*\*|\[\[[\s\S]*?\]\])/g);
     
     return parts.map((part, i) => {
-      // HIGHLIGHTED TEXT (**text**) -> Solid Color Block (No strikethrough look)
+      // HIGHLIGHTED TEXT (**text**) -> Solid Color Block
       if (part.startsWith('**') && part.endsWith('**')) {
+        const content = part.slice(2, -2);
+        
+        // With html-to-image, we can trust standard browser rendering more than html2canvas.
+        // We use box-decoration-break to ensure padding wraps correctly on new lines.
         return (
           <span key={i} style={{ 
-            backgroundColor: palette.title, // Solid Orange background
-            color: palette.body, // Dark text for contrast (matches "Quiebre" screenshot)
-            padding: '0 0.15em', // Tight padding to frame the text
-            borderRadius: '0.1em', // Slight aesthetic rounding
+            backgroundColor: palette.title,
+            color: palette.body,
+            padding: '0.1em 0.15em',
+            borderRadius: '0.1em',
+            display: 'inline',
             boxDecorationBreak: 'clone',
             WebkitBoxDecorationBreak: 'clone',
-            display: 'inline', // Keeps flow natural but allows background
           }}>
-            {part.slice(2, -2)}
+            {content}
           </span>
         );
       }
       
       // BOXED TEXT ([[text]]) -> Blue Pill Button Style
-      // "NO DEBE ESTAR ADEMAS SUBRAYADO" -> Explicit styling ensures no overlap
       if (part.startsWith('[[') && part.endsWith(']]')) {
         return (
           <span key={i} className="inline-block" style={{ 
-            backgroundColor: palette.accent, // Blue Background
-            color: '#ffffff', // White Text
+            backgroundColor: palette.accent,
+            color: '#ffffff',
             padding: '0.25em 0.8em',
-            borderRadius: '999px', // Full pill shape
+            borderRadius: '999px',
             fontWeight: '600',
-            fontSize: '0.80em', // Slightly smaller
+            fontSize: '0.80em',
             verticalAlign: 'middle',
-            margin: '0 0.2em',
+            margin: '0 0.15em',
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            textDecoration: 'none', // Force removal of any inherited decorations
-            border: 'none'
+            textDecoration: 'none',
+            border: 'none',
+            position: 'relative', 
+            zIndex: 1
           }}>
             {part.slice(2, -2)}
           </span>
@@ -98,7 +103,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
     });
   };
 
-  // Common Image Component - Floating Style (No border, clean)
+  // Common Image Component - Floating Style
   const SlideImage = () => (
     <div 
       className={`w-full h-full relative group/image flex items-center justify-center transition-all duration-200 
@@ -111,11 +116,10 @@ export const SlideView: React.FC<SlideViewProps> = ({
         </div>
       ) : slide.imageBase64 ? (
           <div className="relative w-full h-full flex items-center justify-center">
-             {/* Image container with no overflow hidden to allow "floating" feel if transparent PNG */}
             <img 
               src={slide.imageBase64.startsWith('data:') ? slide.imageBase64 : `data:image/png;base64,${slide.imageBase64}`} 
               alt="Slide visual" 
-              className="max-w-full max-h-full object-contain drop-shadow-xl" // Contain + Drop Shadow for vector feel
+              className="max-w-full max-h-full object-contain drop-shadow-xl"
             />
             {!isExport && (
               <div 
@@ -148,38 +152,42 @@ export const SlideView: React.FC<SlideViewProps> = ({
   };
 
   const renderContent = () => {
+    const showRawTitle = isEditable && selectedElement === 'title';
+    const showRawContent = isEditable && selectedElement === 'content';
+
+    // Standard leading for consistency
+    const leadingClass = 'leading-tight';
+    
+    const titleClass = `text-9xl font-bold ${leadingClass} outline-none whitespace-pre-line tracking-tight py-4`;
+    const contentClass = `text-6xl leading-normal font-medium text-gray-600 outline-none whitespace-pre-line py-2`;
+
+    const titleStyle = { color: palette.body, fontFamily: "'Space Grotesk', sans-serif" };
+    const contentStyle = { fontFamily: "'Inter', sans-serif" };
+
     switch (slide.layout) {
       case 'text-only':
         return (
           <div className="flex-1 flex flex-col justify-center items-center p-20 gap-16 text-center">
-             <div 
-               className="w-full"
-               style={getElementStyle('title')}
-               onClick={(e) => handleElementClick(e, 'title')}
-             >
+             <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
-                  className="text-9xl font-bold leading-[1.15] outline-none whitespace-pre-line tracking-tight"
-                  style={{ color: palette.body, fontFamily: "'Space Grotesk', sans-serif" }} // Main text is dark blue
+                  className={titleClass}
+                  style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
                   onBlur={(e) => onTitleChange?.(e.currentTarget.innerText)}
                 >
-                  {renderRichText(slide.title, true)}
+                  {showRawTitle ? slide.title : renderRichText(slide.title, true)}
                 </h2>
              </div>
-             <div
-               className="w-full max-w-4xl"
-               style={getElementStyle('content')}
-               onClick={(e) => handleElementClick(e, 'content')}
-             >
+             <div className="w-full max-w-4xl" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
-                  className="text-6xl leading-relaxed font-medium text-gray-600 outline-none whitespace-pre-line"
-                  style={{ fontFamily: "'Inter', sans-serif" }}
+                  className={contentClass}
+                  style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
                   onBlur={(e) => onContentChange?.(e.currentTarget.innerText)}
                 >
-                  {renderRichText(slide.content)}
+                  {showRawContent ? slide.content : renderRichText(slide.content)}
                 </div>
              </div>
           </div>
@@ -188,36 +196,33 @@ export const SlideView: React.FC<SlideViewProps> = ({
       case 'text-image-text':
           return (
             <div className="flex-1 flex flex-col h-full p-16 gap-10">
-              {/* Top Text (Title) */}
               <div className="flex-none pt-8 flex justify-center items-center text-center" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
-                  className="text-7xl font-bold leading-tight outline-none whitespace-pre-line max-w-4xl"
-                  style={{ color: palette.body, fontFamily: "'Space Grotesk', sans-serif" }}
+                  className={`text-7xl font-bold ${leadingClass} outline-none whitespace-pre-line max-w-4xl py-2`}
+                  style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
                   onBlur={(e) => onTitleChange?.(e.currentTarget.innerText)}
                 >
-                  {renderRichText(slide.title, true)}
+                  {showRawTitle ? slide.title : renderRichText(slide.title, true)}
                 </h2>
               </div>
               
-              {/* Middle Image - Centered and Large */}
               <div className="flex-1 min-h-0 w-full px-4 flex justify-center">
                  <div className="w-full h-full">
                    <SlideImage />
                  </div>
               </div>
 
-              {/* Bottom Text (Content) */}
               <div className="flex-none pb-8 flex justify-center text-center" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
-                  className="text-5xl leading-relaxed font-medium text-gray-600 outline-none whitespace-pre-line max-w-3xl"
-                  style={{ fontFamily: "'Inter', sans-serif" }}
+                  className={`text-5xl leading-normal font-medium text-gray-600 outline-none whitespace-pre-line max-w-3xl py-2`}
+                  style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
                   onBlur={(e) => onContentChange?.(e.currentTarget.innerText)}
                 >
-                  {renderRichText(slide.content)}
+                  {showRawContent ? slide.content : renderRichText(slide.content)}
                 </div>
               </div>
             </div>
@@ -234,24 +239,24 @@ export const SlideView: React.FC<SlideViewProps> = ({
             <div className="h-[50%] w-full p-16 flex flex-col gap-10 justify-start items-center text-center">
               <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
-                  className="text-7xl font-bold leading-tight outline-none whitespace-pre-line"
-                  style={{ color: palette.body, fontFamily: "'Space Grotesk', sans-serif" }}
+                  className={`text-7xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
+                  style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
                   onBlur={(e) => onTitleChange?.(e.currentTarget.innerText)}
                 >
-                  {renderRichText(slide.title, true)}
+                  {showRawTitle ? slide.title : renderRichText(slide.title, true)}
                 </h2>
               </div>
               <div className="w-full max-w-3xl" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
-                  className="text-5xl leading-relaxed font-medium text-gray-600 outline-none whitespace-pre-line"
-                  style={{ fontFamily: "'Inter', sans-serif" }}
+                  className={`text-5xl leading-normal font-medium text-gray-600 outline-none whitespace-pre-line py-2`}
+                  style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
                   onBlur={(e) => onContentChange?.(e.currentTarget.innerText)}
                 >
-                  {renderRichText(slide.content)}
+                  {showRawContent ? slide.content : renderRichText(slide.content)}
                 </div>
               </div>
             </div>
@@ -265,24 +270,24 @@ export const SlideView: React.FC<SlideViewProps> = ({
             <div className="h-[45%] w-full p-16 flex flex-col gap-10 justify-end items-center text-center">
               <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
-                  className="text-7xl font-bold leading-tight outline-none whitespace-pre-line"
-                  style={{ color: palette.body, fontFamily: "'Space Grotesk', sans-serif" }}
+                  className={`text-7xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
+                  style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
                   onBlur={(e) => onTitleChange?.(e.currentTarget.innerText)}
                 >
-                  {renderRichText(slide.title, true)}
+                  {showRawTitle ? slide.title : renderRichText(slide.title, true)}
                 </h2>
               </div>
               <div className="w-full max-w-3xl" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
-                  className="text-5xl leading-relaxed font-medium text-gray-600 outline-none whitespace-pre-line"
-                  style={{ fontFamily: "'Inter', sans-serif" }}
+                  className={`text-5xl leading-normal font-medium text-gray-600 outline-none whitespace-pre-line py-2`}
+                  style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
                   onBlur={(e) => onContentChange?.(e.currentTarget.innerText)}
                 >
-                  {renderRichText(slide.content)}
+                  {showRawContent ? slide.content : renderRichText(slide.content)}
                 </div>
               </div>
             </div>
@@ -315,17 +320,14 @@ export const SlideView: React.FC<SlideViewProps> = ({
       <div 
         className="w-full h-full flex flex-col overflow-hidden relative"
         style={{
-          backgroundColor: '#FFFFFF', // Force white background for that clean corporate look
+          backgroundColor: '#FFFFFF',
           transform: `scale(${scale})`,
           transformOrigin: 'top left',
           width: `${width}px`,
           height: `${height}px`
         }}
       >
-        {/* Dynamic Content */}
         {renderContent()}
-        
-        {/* Removed Footer Dot as requested */}
       </div>
     </div>
   );
