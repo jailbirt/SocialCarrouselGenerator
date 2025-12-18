@@ -70,6 +70,8 @@ export const SlideView: React.FC<SlideViewProps> = ({
             display: 'inline',
             boxDecorationBreak: 'clone',
             WebkitBoxDecorationBreak: 'clone',
+            position: 'relative',
+            zIndex: 20
           }}>
             {content}
           </span>
@@ -92,21 +94,21 @@ export const SlideView: React.FC<SlideViewProps> = ({
             textDecoration: 'none',
             border: 'none',
             position: 'relative', 
-            zIndex: 1
+            zIndex: 20
           }}>
             {part.slice(2, -2)}
           </span>
         );
       }
 
-      return <span key={i}>{part}</span>;
+      return <span key={i} style={{ position: 'relative', zIndex: 20 }}>{part}</span>;
     });
   };
 
   // Common Image Component - Floating Style
   const SlideImage = () => (
     <div 
-      className={`w-full h-full relative group/image flex items-center justify-center transition-all duration-200 
+      className={`w-full h-full relative group/image flex items-center justify-center transition-all duration-200 z-10
         ${selectedElement === 'image' && !isExport ? 'ring-4 ring-blue-500 ring-offset-4' : ''}`}
       onClick={(e) => handleElementClick(e, 'image')}
     >
@@ -115,15 +117,15 @@ export const SlideView: React.FC<SlideViewProps> = ({
           <ImageIcon className="w-24 h-24 text-gray-300" />
         </div>
       ) : slide.imageBase64 ? (
-          <div className="relative w-full h-full flex items-center justify-center">
+          <div className="relative w-full h-full flex items-center justify-center z-10">
             <img 
               src={slide.imageBase64.startsWith('data:') ? slide.imageBase64 : `data:image/png;base64,${slide.imageBase64}`} 
               alt="Slide visual" 
-              className="max-w-full max-h-full object-contain drop-shadow-xl"
+              className="max-w-full max-h-full object-contain drop-shadow-xl relative z-10"
             />
             {!isExport && (
               <div 
-                className={`absolute inset-0 flex items-center justify-center transition-opacity cursor-pointer z-10
+                className={`absolute inset-0 flex items-center justify-center transition-opacity cursor-pointer z-20
                   ${selectedElement === 'image' ? 'opacity-100' : 'opacity-0 group-hover/image:opacity-100'}`}
               >
                 <button 
@@ -158,8 +160,8 @@ export const SlideView: React.FC<SlideViewProps> = ({
     // Standard leading for consistency
     const leadingClass = 'leading-tight';
     
-    const titleClass = `text-9xl font-bold ${leadingClass} outline-none whitespace-pre-line tracking-tight py-4`;
-    const contentClass = `text-6xl leading-normal font-medium text-gray-600 outline-none whitespace-pre-line py-2`;
+    const titleClass = `text-9xl font-bold ${leadingClass} outline-none whitespace-pre-line tracking-tight py-4 relative z-20`;
+    const contentClass = `text-6xl leading-normal font-medium text-gray-600 outline-none whitespace-pre-line py-2 relative z-20`;
 
     const titleStyle = { color: palette.body, fontFamily: "'Space Grotesk', sans-serif" };
     const contentStyle = { fontFamily: "'Inter', sans-serif" };
@@ -168,7 +170,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
       case 'text-only':
         return (
           <div className="flex-1 flex flex-col justify-center items-center p-20 gap-16 text-center">
-             <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
+             <div className="w-full relative z-20" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
                   className={titleClass}
                   style={titleStyle}
@@ -179,7 +181,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
                   {showRawTitle ? slide.title : renderRichText(slide.title, true)}
                 </h2>
              </div>
-             <div className="w-full max-w-4xl" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
+             <div className="w-full max-w-4xl relative z-20" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
                   className={contentClass}
                   style={contentStyle}
@@ -196,7 +198,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
       case 'text-image-text':
           return (
             <div className="flex-1 flex flex-col h-full p-16 gap-10">
-              <div className="flex-none pt-8 flex justify-center items-center text-center" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
+              <div className="flex-none pt-8 flex justify-center items-center text-center relative z-20" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
                   className={`text-7xl font-bold ${leadingClass} outline-none whitespace-pre-line max-w-4xl py-2`}
                   style={titleStyle}
@@ -208,13 +210,13 @@ export const SlideView: React.FC<SlideViewProps> = ({
                 </h2>
               </div>
               
-              <div className="flex-1 min-h-0 w-full px-4 flex justify-center">
+              <div className="flex-1 min-h-0 w-full px-4 flex justify-center relative z-10">
                  <div className="w-full h-full">
                    <SlideImage />
                  </div>
               </div>
 
-              <div className="flex-none pb-8 flex justify-center text-center" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
+              <div className="flex-none pb-8 flex justify-center text-center relative z-20" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
                   className={`text-5xl leading-normal font-medium text-gray-600 outline-none whitespace-pre-line max-w-3xl py-2`}
                   style={contentStyle}
@@ -231,12 +233,12 @@ export const SlideView: React.FC<SlideViewProps> = ({
       case 'image-top':
         return (
           <div className="flex-1 flex flex-col h-full">
-            <div className="h-[50%] w-full p-12 pb-4 flex justify-center items-end">
+            <div className="h-[50%] w-full p-12 pb-4 flex justify-center items-end relative z-10">
                <div className="w-[90%] h-[90%]">
                  <SlideImage />
                </div>
             </div>
-            <div className="h-[50%] w-full p-16 flex flex-col gap-10 justify-start items-center text-center">
+            <div className="h-[50%] w-full p-16 flex flex-col gap-10 justify-start items-center text-center relative z-20">
               <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
                   className={`text-7xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
@@ -267,7 +269,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
       default:
         return (
           <div className="flex-1 flex flex-col h-full">
-            <div className="h-[45%] w-full p-16 flex flex-col gap-10 justify-end items-center text-center">
+            <div className="h-[45%] w-full p-16 flex flex-col gap-10 justify-end items-center text-center relative z-20">
               <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
                   className={`text-7xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
@@ -291,7 +293,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
                 </div>
               </div>
             </div>
-            <div className="h-[55%] w-full p-12 pt-4 flex justify-center items-start">
+            <div className="h-[55%] w-full p-12 pt-4 flex justify-center items-start relative z-10">
                <div className="w-[90%] h-[90%]">
                  <SlideImage />
                </div>

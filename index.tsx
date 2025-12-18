@@ -14,6 +14,9 @@ interface ErrorBoundaryState {
 
 // Define Error Boundary Class
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Explicitly declare props to resolve TypeScript error where it fails to infer props from React.Component
+  public props: ErrorBoundaryProps;
+
   state: ErrorBoundaryState = {
     hasError: false,
     error: null
@@ -21,6 +24,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
   constructor(props: ErrorBoundaryProps) {
     super(props);
+    this.props = props;
     this.state = {
       hasError: false,
       error: null
