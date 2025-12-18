@@ -7,6 +7,29 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const TEXT_MODEL = 'gemini-3-flash-preview';
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
 
+// --- Rate Limiting Helpers ---
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const runWithRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 4000): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error: any) {
+    // Check for rate limit error codes (429) or Resource Exhausted status
+    if (retries > 0 && (
+        error?.status === 429 || 
+        error?.code === 429 || 
+        error?.message?.includes('429') || 
+        error?.message?.includes('quota') ||
+        error?.status === 'RESOURCE_EXHAUSTED'
+    )) {
+      console.warn(`Rate limit hit. Retrying in ${delay}ms... (Attempts left: ${retries})`);
+      await wait(delay);
+      return runWithRetry(fn, retries - 1, delay * 2); // Exponential backoff
+    }
+    throw error;
+  }
+};
+
 export const generateCarouselStructure = async (topic: string): Promise<Omit<Slide, 'id' | 'imageBase64' | 'isGeneratingImage'>[]> => {
   const response = await ai.models.generateContent({
     model: TEXT_MODEL,
@@ -66,46 +89,50 @@ export const generateCarouselStructure = async (topic: string): Promise<Omit<Sli
 };
 
 export const generateSlideImage = async (prompt: string): Promise<string> => {
-  const response = await ai.models.generateContent({
-    model: IMAGE_MODEL,
-    contents: {
-      parts: [{ text: `High quality, flat vector illustration, minimalist corporate memphis style, white background, no text inside image, clean lines, vibrant blue and orange accents: ${prompt}` }]
-    }
-  });
+  return runWithRetry(async () => {
+    const response = await ai.models.generateContent({
+      model: IMAGE_MODEL,
+      contents: {
+        parts: [{ text: `High quality, flat vector illustration, minimalist corporate memphis style, white background, no text inside image, clean lines, vibrant blue and orange accents: ${prompt}` }]
+      }
+    });
 
-  // Extract base64 image
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      return part.inlineData.data;
+    // Extract base64 image
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return part.inlineData.data;
+      }
     }
-  }
-  throw new Error("No image generated");
+    throw new Error("No image generated");
+  });
 };
 
 export const editSlideImage = async (currentImageBase64: string, instruction: string): Promise<string> => {
-  const response = await ai.models.generateContent({
-    model: IMAGE_MODEL,
-    contents: {
-      parts: [
-        {
-          inlineData: {
-            mimeType: 'image/png', // Assuming PNG for simplicity
-            data: currentImageBase64
+  return runWithRetry(async () => {
+    const response = await ai.models.generateContent({
+      model: IMAGE_MODEL,
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: 'image/png', // Assuming PNG for simplicity
+              data: currentImageBase64
+            }
+          },
+          {
+            text: `Maintain the flat vector corporate style. White background. ${instruction}`
           }
-        },
-        {
-          text: `Maintain the flat vector corporate style. White background. ${instruction}`
-        }
-      ]
-    }
-  });
+        ]
+      }
+    });
 
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      return part.inlineData.data;
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return part.inlineData.data;
+      }
     }
-  }
-  throw new Error("No edited image generated");
+    throw new Error("No edited image generated");
+  });
 };
 
 export const determineEditIntent = async (userMessage: string): Promise<'CONTENT' | 'IMAGE'> => {

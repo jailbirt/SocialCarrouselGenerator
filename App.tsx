@@ -21,7 +21,8 @@ import {
   PanelLeftOpen,
   PlusCircle,
   Trash2,
-  Info
+  Info,
+  AlertCircle
 } from 'lucide-react';
 
 const INITIAL_PALETTE: Palette = {
@@ -49,8 +50,12 @@ const App: React.FC = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [showPalette, setShowPalette] = useState(false);
+  const [showPalette, setShowPalette] = useState(true); // Palette open by default
   const [pendingImage, setPendingImage] = useState<string | null>(null);
+
+  // UI Modals State
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Refs
   const slidesContainerRef = useRef<HTMLDivElement>(null);
@@ -123,20 +128,25 @@ const App: React.FC = () => {
   // --- Core Actions ---
 
   const handleCreateNew = () => {
-    if (window.confirm("Are you sure? This will delete the current carousel and start fresh.")) {
-      // Force reset of all states
-      setSlides([]);
-      setTopic('');
-      setChatHistory([]);
-      setSelectedSlideId(null);
-      setSelectedElement(null);
-      setPalette(INITIAL_PALETTE);
-      setChatInput('');
-      setPendingImage(null);
-      setIsGenerating(false);
-      // Ensure sidebar is open to show the input form
-      setIsSidebarOpen(true);
-    }
+    // Replaced window.confirm with custom modal state
+    setShowResetConfirm(true);
+  };
+
+  const performReset = () => {
+    // Force reset of all states
+    setSlides([]);
+    setTopic('');
+    setChatHistory([]);
+    setSelectedSlideId(null);
+    setSelectedElement(null);
+    setPalette(INITIAL_PALETTE);
+    setChatInput('');
+    setPendingImage(null);
+    setIsGenerating(false);
+    // Ensure sidebar is open to show the input form
+    setIsSidebarOpen(true);
+    setShowPalette(true); // Reset palette to open
+    setShowResetConfirm(false);
   };
 
   const handleGenerate = async () => {
@@ -168,7 +178,7 @@ const App: React.FC = () => {
 
     } catch (error) {
       console.error(error);
-      alert('Failed to generate carousel. Please check API Key or try again.');
+      setErrorMessage('Failed to generate carousel. Please check API Key or try again.');
     } finally {
       setIsGenerating(false);
       setLoadingMessage('');
@@ -190,6 +200,11 @@ const App: React.FC = () => {
       } catch (e) {
         console.error(`Failed to generate image for slide ${i}`, e);
         setSlides(prev => prev.map(s => s.id === updatedSlides[i].id ? { ...s, isGeneratingImage: false } : s));
+      }
+
+      // Add a delay between requests to avoid hitting rate limits
+      if (i < updatedSlides.length - 1) {
+         await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
   };
@@ -367,7 +382,7 @@ const App: React.FC = () => {
       }
       pdf.save('linkedin-carousel.pdf');
     } catch (error) {
-      alert("Failed to export PDF.");
+      setErrorMessage("Failed to export PDF. Please check your browser settings.");
     } finally {
       setIsGenerating(false);
       setLoadingMessage('');
@@ -396,6 +411,72 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
       
+      {/* --- MODALS --- */}
+      
+      {/* 1. Confirmation Modal (Replaces window.confirm) */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
+             <div className="flex flex-col gap-4">
+               <div className="flex items-center gap-3 text-gray-900">
+                 <div className="p-2 bg-red-100 rounded-full text-red-600">
+                   <AlertCircle className="w-6 h-6" />
+                 </div>
+                 <h3 className="text-lg font-bold">Start New Carousel?</h3>
+               </div>
+               <p className="text-gray-600 text-sm leading-relaxed">
+                 This action will <span className="font-bold text-gray-800">delete your current work</span> and reset all slides. This cannot be undone.
+               </p>
+               <div className="flex justify-end gap-3 mt-2">
+                 <button 
+                   onClick={() => setShowResetConfirm(false)}
+                   className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                 >
+                   Cancel
+                 </button>
+                 <button 
+                   onClick={performReset}
+                   className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm shadow-red-200 transition-colors"
+                 >
+                   Yes, Create New
+                 </button>
+               </div>
+             </div>
+           </div>
+        </div>
+      )}
+
+      {/* 2. Error Modal (Replaces window.alert) */}
+      {errorMessage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200 border-l-4 border-red-500">
+             <div className="flex flex-col gap-4">
+               <div className="flex items-center justify-between">
+                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                   <AlertCircle className="w-5 h-5 text-red-500" />
+                   Error
+                 </h3>
+                 <button onClick={() => setErrorMessage(null)} className="text-gray-400 hover:text-gray-600">
+                   <X className="w-5 h-5" />
+                 </button>
+               </div>
+               <p className="text-gray-600 text-sm leading-relaxed">
+                 {errorMessage}
+               </p>
+               <div className="flex justify-end mt-2">
+                 <button 
+                   onClick={() => setErrorMessage(null)}
+                   className="px-4 py-2 text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors"
+                 >
+                   Dismiss
+                 </button>
+               </div>
+             </div>
+           </div>
+        </div>
+      )}
+
+
       {/* UNIFIED LEFT SIDEBAR */}
       <div 
         className={`bg-white border-r border-gray-200 flex flex-col z-30 transition-all duration-300 relative shadow-xl overflow-hidden
