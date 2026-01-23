@@ -8,6 +8,17 @@ export type SlideLayout = 'image-top' | 'image-bottom' | 'text-only' | 'text-ima
 
 export type SlideElement = 'title' | 'content' | 'image' | null;
 
+export interface Position {
+  x: number;
+  y: number;
+}
+
+export interface FontPair {
+  name: string;
+  title: string;
+  body: string;
+}
+
 export interface Slide {
   id: string;
   title: string;
@@ -16,7 +27,16 @@ export interface Slide {
   imageBase64: string | null; // Base64 string for the image
   isGeneratingImage: boolean;
   layout: SlideLayout;
-  imageScale?: number; // New property for manual resizing
+  imageScale?: number; // Manual resizing
+  
+  // New positioning properties
+  titlePos: Position;
+  contentPos: Position;
+  imagePos: Position;
+  textAlign: 'left' | 'center' | 'right';
+  
+  // Typography
+  fontPair: FontPair;
 }
 
 export interface ChatMessage {

@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Slide, Palette, ChatMessage, SlideElement } from './types';
-import { generateCarouselStructure, generateSlideImage, editSlideImage, determineEditIntent, updateSlideContent, updateSpecificSlideField } from './services/geminiService';
+import { Slide, Palette, ChatMessage, SlideElement, Position, FontPair } from './types';
+import { generateCarouselStructure, generateSlideImage, editSlideImage, determineEditIntent, updateSlideContent, updateSpecificSlideField, paraphraseText } from './services/geminiService';
 import { SlideView } from './components/SlideView';
 import { toJpeg } from 'html-to-image';
 import jsPDF from 'jspdf';
 import JSZip from 'jszip';
+import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { 
   Send, 
   Download, 
@@ -27,7 +28,16 @@ import {
   Paintbrush,
   Images,
   FileDown,
-  Maximize
+  Maximize,
+  Smile,
+  PenTool,
+  Move,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  RotateCcw,
+  Type as TypeIcon,
+  Wand2
 } from 'lucide-react';
 
 const INITIAL_PALETTE: Palette = {
@@ -38,17 +48,28 @@ const INITIAL_PALETTE: Palette = {
 
 const STYLE_PRESETS = [
   "Corporate Vector (Default)",
+  "Modern Flat Vector", 
   "Hyper-realistic Photo",
   "3D Render (Pixar Style)",
   "Minimalist Line Art",
   "Cyberpunk Neon",
-  "Hand Drawn Sketch"
+  "Hand Drawn Sketch",
+  "Custom Style"
+];
+
+const FONT_PAIRS: FontPair[] = [
+  { name: 'Modern', title: "'Space Grotesk', sans-serif", body: "'Inter', sans-serif" },
+  { name: 'Clean', title: "'Inter', sans-serif", body: "'Inter', sans-serif" },
+  { name: 'Elegant', title: "'Playfair Display', serif", body: "'Lato', sans-serif" },
+  { name: 'Bold', title: "'Oswald', sans-serif", body: "'Roboto', sans-serif" },
+  { name: 'Classic', title: "'Merriweather', serif", body: "'Source Sans 3', sans-serif" },
 ];
 
 const App: React.FC = () => {
   // --- State ---
   const [topic, setTopic] = useState('');
-  const [imageStyle, setImageStyle] = useState('Corporate Vector'); // New State for Image Style
+  const [imageStyle, setImageStyle] = useState('Corporate Vector'); 
+  const [customStylePrompt, setCustomStylePrompt] = useState(''); 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [palette, setPalette] = useState<Palette>(INITIAL_PALETTE);
   
@@ -64,8 +85,9 @@ const App: React.FC = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [showPalette, setShowPalette] = useState(true); // Palette open by default
+  const [showPalette, setShowPalette] = useState(true); 
   const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false); 
 
   // UI Modals State
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -77,6 +99,10 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- Helpers ---
+
+  const getEffectiveStyle = () => {
+    return imageStyle === 'Custom Style' ? customStylePrompt : imageStyle;
+  };
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -142,15 +168,14 @@ const App: React.FC = () => {
   // --- Core Actions ---
 
   const handleCreateNew = () => {
-    // Replaced window.confirm with custom modal state
     setShowResetConfirm(true);
   };
 
   const performReset = () => {
-    // Force reset of all states
     setSlides([]);
     setTopic('');
-    setImageStyle('Corporate Vector'); // Reset style
+    setImageStyle('Corporate Vector'); 
+    setCustomStylePrompt('');
     setChatHistory([]);
     setSelectedSlideId(null);
     setSelectedElement(null);
@@ -158,14 +183,17 @@ const App: React.FC = () => {
     setChatInput('');
     setPendingImage(null);
     setIsGenerating(false);
-    // Ensure sidebar is open to show the input form
     setIsSidebarOpen(true);
-    setShowPalette(true); // Reset palette to open
+    setShowPalette(true); 
     setShowResetConfirm(false);
   };
 
   const handleGenerate = async () => {
     if (!topic.trim()) return;
+    if (imageStyle === 'Custom Style' && !customStylePrompt.trim()) {
+      setErrorMessage("Please describe your custom image style.");
+      return;
+    }
     
     setIsGenerating(true);
     setLoadingMessage('Designing your carousel structure...');
@@ -174,9 +202,10 @@ const App: React.FC = () => {
     setSelectedElement(null);
     setChatHistory([]);
 
+    const effectiveStyle = getEffectiveStyle();
+
     try {
-      // Pass imageStyle to structure generator
-      const rawSlides = await generateCarouselStructure(topic, imageStyle);
+      const rawSlides = await generateCarouselStructure(topic, effectiveStyle);
       
       const newSlides: Slide[] = rawSlides.map((s, index) => ({
         ...s,
@@ -184,14 +213,19 @@ const App: React.FC = () => {
         imageBase64: null,
         isGeneratingImage: true,
         layout: s.layout || 'image-bottom',
-        imageScale: 1.0 // Default scale
+        imageScale: 1.0, 
+        titlePos: { x: 0, y: 0 },
+        contentPos: { x: 0, y: 0 },
+        imagePos: { x: 0, y: 0 },
+        textAlign: 'center',
+        fontPair: FONT_PAIRS[0] // Default font
       }));
 
       setSlides(newSlides);
       if (newSlides.length > 0) setSelectedSlideId(newSlides[0].id);
 
       setLoadingMessage('Rendering illustrations...');
-      generateImagesForSlides(newSlides);
+      generateImagesForSlides(newSlides, effectiveStyle);
 
     } catch (error) {
       console.error(error);
@@ -202,7 +236,7 @@ const App: React.FC = () => {
     }
   };
 
-  const generateImagesForSlides = async (currentSlides: Slide[]) => {
+  const generateImagesForSlides = async (currentSlides: Slide[], styleToUse: string) => {
     const updatedSlides = [...currentSlides];
     
     for (let i = 0; i < updatedSlides.length; i++) {
@@ -212,15 +246,13 @@ const App: React.FC = () => {
       }
 
       try {
-        // Pass global imageStyle
-        const base64 = await generateSlideImage(updatedSlides[i].imagePrompt, imageStyle);
+        const base64 = await generateSlideImage(updatedSlides[i].imagePrompt, styleToUse);
         setSlides(prev => prev.map(s => s.id === updatedSlides[i].id ? { ...s, imageBase64: base64, isGeneratingImage: false } : s));
       } catch (e) {
         console.error(`Failed to generate image for slide ${i}`, e);
         setSlides(prev => prev.map(s => s.id === updatedSlides[i].id ? { ...s, isGeneratingImage: false } : s));
       }
 
-      // Add a delay between requests to avoid hitting rate limits
       if (i < updatedSlides.length - 1) {
          await new Promise(resolve => setTimeout(resolve, 3000));
       }
@@ -233,9 +265,10 @@ const App: React.FC = () => {
     if (!slide) return;
 
     setSlides(prev => prev.map(s => s.id === slideId ? { ...s, isGeneratingImage: true } : s));
+    const effectiveStyle = getEffectiveStyle();
+
     try {
-      // Use the global imageStyle for regeneration
-      const base64 = await generateSlideImage(slide.imagePrompt, imageStyle);
+      const base64 = await generateSlideImage(slide.imagePrompt, effectiveStyle);
       setSlides(prev => prev.map(s => s.id === slideId ? { ...s, imageBase64: base64, isGeneratingImage: false } : s));
     } catch (error) {
        console.error(error);
@@ -251,8 +284,63 @@ const App: React.FC = () => {
     setSlides(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
   };
 
+  // --- Typography & Updates ---
+
+  const handleFontChange = (id: string, fontPairName: string) => {
+    const fontPair = FONT_PAIRS.find(f => f.name === fontPairName) || FONT_PAIRS[0];
+    setSlides(prev => prev.map(s => s.id === id ? { ...s, fontPair } : s));
+  };
+
+  const handleParaphrase = async (id: string, element: 'title' | 'content') => {
+     const slide = slides.find(s => s.id === id);
+     if(!slide) return;
+     
+     const originalText = element === 'title' ? slide.title : slide.content;
+     if(!originalText) return;
+
+     setLoadingMessage('Rewriting text...');
+     setIsGenerating(true);
+
+     try {
+       const newText = await paraphraseText(originalText);
+       setSlides(prev => prev.map(s => s.id === id ? { ...s, [element]: newText } : s));
+       setChatHistory(prev => [...prev, { role: 'model', text: `I've rewritten the ${element}.` }]);
+     } catch(e) {
+       console.error(e);
+       setErrorMessage("Failed to paraphrase text.");
+     } finally {
+       setIsGenerating(false);
+       setLoadingMessage('');
+     }
+  };
+
   const handleImageScaleUpdate = (id: string, scale: number) => {
     setSlides(prev => prev.map(s => s.id === id ? { ...s, imageScale: scale } : s));
+  };
+
+  const handlePositionUpdate = (id: string, element: SlideElement, axis: 'x' | 'y', value: number) => {
+    if (!element) return;
+    setSlides(prev => prev.map(s => {
+      if (s.id !== id) return s;
+      const propName = element === 'title' ? 'titlePos' : element === 'content' ? 'contentPos' : 'imagePos';
+      return {
+        ...s,
+        [propName]: { ...s[propName], [axis]: value }
+      };
+    }));
+  };
+
+  const handleResetPosition = (id: string, element: SlideElement) => {
+     if (!element) return;
+     setSlides(prev => prev.map(s => {
+       if (s.id !== id) return s;
+       const propName = element === 'title' ? 'titlePos' : element === 'content' ? 'contentPos' : 'imagePos';
+       return { ...s, [propName]: { x: 0, y: 0 } };
+     }));
+  };
+
+  const handleTextAlignUpdate = (id: string, align: 'left' | 'center' | 'right') => {
+    setSlides(prev => prev.map(s => s.id === id ? { ...s, textAlign: align } : s));
   };
 
   // --- Image Upload & Chat Handlers ---
@@ -287,15 +375,35 @@ const App: React.FC = () => {
     }
   };
 
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    // Context Aware Emoji Insertion
+    if (selectedSlideId && (selectedElement === 'title' || selectedElement === 'content')) {
+       // Insert into slide text
+       const element = selectedElement as 'title' | 'content';
+       setSlides(prev => prev.map(s => {
+         if (s.id === selectedSlideId) {
+           return { ...s, [element]: s[element] + emojiData.emoji }; // Append emoji
+         }
+         return s;
+       }));
+    } else {
+       // Insert into chat
+       setChatInput((prevInput) => prevInput + emojiData.emoji);
+    }
+    setShowEmojiPicker(false);
+  };
+
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!chatInput.trim() && !pendingImage) || isGenerating) return;
 
     const userMsg = chatInput;
     const uploadedImage = pendingImage;
+    const effectiveStyle = getEffectiveStyle();
     
     setChatInput('');
     setPendingImage(null);
+    setShowEmojiPicker(false);
     setChatHistory(prev => [...prev, { role: 'user', text: userMsg, image: uploadedImage || undefined }]);
 
     if (!selectedSlideId) {
@@ -322,8 +430,7 @@ const App: React.FC = () => {
           setLoadingMessage('Generating image...');
           setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, isGeneratingImage: true } : s));
           try {
-            // Pass style to generation
-            const newImage = await generateSlideImage(userMsg, imageStyle);
+            const newImage = await generateSlideImage(userMsg, effectiveStyle);
             setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, imageBase64: newImage, isGeneratingImage: false } : s));
             setChatHistory(prev => [...prev, { role: 'model', text: "I've generated a new image." }]);
           } catch (err) {
@@ -333,7 +440,7 @@ const App: React.FC = () => {
            setLoadingMessage('Editing image...');
            setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, isGeneratingImage: true } : s));
            try {
-             const newImage = await editSlideImage(currentSlide.imageBase64!, userMsg, imageStyle);
+             const newImage = await editSlideImage(currentSlide.imageBase64!, userMsg, effectiveStyle);
              setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, imageBase64: newImage, isGeneratingImage: false } : s));
              setChatHistory(prev => [...prev, { role: 'model', text: "I've updated the image." }]);
            } catch (err) {
@@ -369,7 +476,7 @@ const App: React.FC = () => {
            return;
         }
         setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, isGeneratingImage: true } : s));
-        const newImage = await editSlideImage(currentSlide.imageBase64!, userMsg, imageStyle);
+        const newImage = await editSlideImage(currentSlide.imageBase64!, userMsg, effectiveStyle);
         setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, imageBase64: newImage, isGeneratingImage: false } : s));
         setChatHistory(prev => [...prev.slice(0, -1), { role: 'model', text: "Image updated." }]);
       } else {
@@ -394,7 +501,6 @@ const App: React.FC = () => {
       console.warn("Font loading check failed", e);
     }
     
-    // Slight delay to ensure DOM is stable
     await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
@@ -403,16 +509,14 @@ const App: React.FC = () => {
       for (let i = 0; i < slides.length; i++) {
         const slideElement = document.getElementById(`slide-render-${slides[i].id}`);
         if (slideElement) {
-          // SWITCH TO JPEG AND LOWER QUALITY FOR SMALLER FILE SIZE
           const imgData = await toJpeg(slideElement, {
-            quality: 0.80, // 80% quality (Good balance)
-            pixelRatio: 1.0, // 1:1 pixel mapping (drastically reduces resolution from 2x retina)
-            backgroundColor: palette.background, // USE PALETTE BACKGROUND
+            quality: 0.80, 
+            pixelRatio: 1.0, 
+            backgroundColor: palette.background, 
             cacheBust: true,
           });
 
           if (i > 0) pdf.addPage([1080, 1350]);
-          // Use JPEG compression in PDF
           pdf.addImage(imgData, 'JPEG', 0, 0, 1080, 1350);
         }
       }
@@ -445,23 +549,19 @@ const App: React.FC = () => {
       for (let i = 0; i < slides.length; i++) {
         const slideElement = document.getElementById(`slide-render-${slides[i].id}`);
         if (slideElement) {
-          // Use JPEG for ZIP as well to keep file size reasonable
           const imgData = await toJpeg(slideElement, {
-            quality: 0.90, // Slightly higher quality for individual images
+            quality: 0.90, 
             pixelRatio: 1.0, 
-            backgroundColor: palette.background, // USE PALETTE BACKGROUND
+            backgroundColor: palette.background, 
             cacheBust: true,
           });
           
-          // Remove the data URL prefix
           const base64Data = imgData.replace(/^data:image\/jpeg;base64,/, "");
           zip.file(`slide-${i + 1}.jpg`, base64Data, {base64: true});
         }
       }
 
       const content = await zip.generateAsync({type: "blob"});
-      
-      // Create download link
       const url = window.URL.createObjectURL(content);
       const link = document.createElement('a');
       link.href = url;
@@ -488,7 +588,6 @@ const App: React.FC = () => {
     return "Type instructions...";
   };
 
-  // Helper for palette tooltips
   const getPaletteTooltip = (key: string) => {
     switch(key) {
       case 'accent': return 'Color for highlights (**) and buttons';
@@ -498,12 +597,15 @@ const App: React.FC = () => {
     }
   };
 
+  const currentSlide = selectedSlideId ? slides.find(s => s.id === selectedSlideId) : null;
+  const currentPos = currentSlide && selectedElement 
+    ? (selectedElement === 'title' ? currentSlide.titlePos : selectedElement === 'content' ? currentSlide.contentPos : currentSlide.imagePos) 
+    : { x: 0, y: 0 };
+
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
       
       {/* --- MODALS --- */}
-      
-      {/* 1. Confirmation Modal */}
       {showResetConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
@@ -536,7 +638,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* 2. Error Modal */}
       {errorMessage && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200 border-l-4 border-red-500">
@@ -575,11 +676,10 @@ const App: React.FC = () => {
         <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 min-w-[24rem]">
           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <Sparkles className="text-blue-600 w-5 h-5" />
-            LinkeGen
+            CarrouselGenerator
           </h1>
         </div>
 
-        {/* --- STATE A: CREATION MODE (No slides) --- */}
         {slides.length === 0 ? (
           <div className="flex-1 overflow-y-auto p-6 space-y-8 animate-in fade-in duration-300 min-w-[24rem]">
             <div className="space-y-4">
@@ -592,7 +692,6 @@ const App: React.FC = () => {
                 disabled={isGenerating}
               />
 
-              {/* IMAGE STYLE SELECTOR */}
               <div className="space-y-2">
                 <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   <Paintbrush className="w-4 h-4 text-blue-600" />
@@ -614,6 +713,23 @@ const App: React.FC = () => {
                     ))}
                   </datalist>
                 </div>
+                
+                {imageStyle === 'Custom Style' && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-2 mt-2 mb-1">
+                      <PenTool className="w-3 h-3 text-purple-600" />
+                      <span className="text-xs font-semibold text-purple-700">Custom Style Prompt</span>
+                    </div>
+                    <textarea
+                      value={customStylePrompt}
+                      onChange={(e) => setCustomStylePrompt(e.target.value)}
+                      className="w-full p-3 bg-purple-50 border border-purple-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none text-sm resize-none h-20"
+                      placeholder="e.g. Pixel art characters in a neon city, synthwave colors..."
+                      disabled={isGenerating}
+                    />
+                  </div>
+                )}
+
                 <div className="flex flex-wrap gap-2 mt-2">
                   {STYLE_PRESETS.slice(0, 3).map((style) => (
                     <button
@@ -628,12 +744,22 @@ const App: React.FC = () => {
                       {style.split(' ')[0]}
                     </button>
                   ))}
+                  <button
+                      onClick={() => setImageStyle("Custom Style")}
+                      className={`text-xs px-2 py-1 rounded-md border transition-colors ${
+                        imageStyle === "Custom Style" 
+                        ? 'bg-purple-100 border-purple-200 text-purple-700' 
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      Custom
+                  </button>
                 </div>
               </div>
 
               <button
                 onClick={handleGenerate}
-                disabled={!topic.trim() || isGenerating}
+                disabled={!topic.trim() || isGenerating || (imageStyle === 'Custom Style' && !customStylePrompt.trim())}
                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl font-semibold transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2 mt-4"
               >
                 {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
@@ -654,7 +780,6 @@ const App: React.FC = () => {
                         <span className="text-[10px] uppercase font-bold text-gray-400">{key}</span>
                         <div className="relative group/tooltip">
                           <Info className="w-3 h-3 text-gray-300 hover:text-blue-500 cursor-help" />
-                          {/* Tooltip */}
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-gray-800 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity z-50 text-center shadow-lg">
                             {getPaletteTooltip(key)}
                             <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-800"></div>
@@ -676,18 +801,16 @@ const App: React.FC = () => {
             </div>
           </div>
         ) : (
-          // --- STATE B: EDIT MODE (Slides exist) ---
           <>
             {/* Chat History Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 min-w-[24rem]">
-                {/* Intro Message */}
                 <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-start gap-3">
                   <MessageSquare className="w-5 h-5 text-blue-600 mt-0.5" />
                   <div>
                     <p className="text-sm font-semibold text-blue-900">Editor Assistant Active</p>
                     <p className="text-xs text-blue-700 mt-1">
                       {selectedElement 
-                        ? `Editing: ${selectedElement.toUpperCase()}. Type below to update.`
+                        ? `Editing: ${selectedElement.toUpperCase()}. Use sidebar to rewrite or adjust.`
                         : "Select any text or image on the slide to edit it."}
                     </p>
                   </div>
@@ -710,27 +833,119 @@ const App: React.FC = () => {
                 <div ref={chatEndRef} />
             </div>
 
-            {/* NEW: IMAGE RESIZE SLIDER (Appears only when image is selected) */}
-            {selectedElement === 'image' && selectedSlideId && (
+            {/* NEW: FINE TUNING CONTROLS */}
+            {currentSlide && (
               <div className="p-4 bg-white border-t border-gray-200 animate-in slide-in-from-bottom-2">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-gray-700 flex items-center gap-2">
-                    <Maximize className="w-3 h-3 text-blue-600" />
-                    Image Size
-                  </label>
-                  <span className="text-xs font-mono text-gray-500">
-                    {Math.round((slides.find(s => s.id === selectedSlideId)?.imageScale || 1) * 100)}%
-                  </span>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-bold text-gray-800 flex items-center gap-2 uppercase tracking-wide">
+                    {selectedElement ? <Move className="w-3 h-3 text-blue-600" /> : <TypeIcon className="w-3 h-3 text-blue-600" />}
+                    {selectedElement ? "Element Tuning" : "Slide Typography"}
+                  </h3>
+                  {selectedElement && (
+                    <button 
+                      onClick={() => handleResetPosition(currentSlide.id, selectedElement)}
+                      className="text-[10px] text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+                      title="Reset Position"
+                    >
+                      <RotateCcw className="w-3 h-3" /> Reset Pos
+                    </button>
+                  )}
                 </div>
-                <input 
-                  type="range" 
-                  min="0.5" 
-                  max="1.5" 
-                  step="0.1" 
-                  value={slides.find(s => s.id === selectedSlideId)?.imageScale || 1}
-                  onChange={(e) => handleImageScaleUpdate(selectedSlideId, parseFloat(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                />
+
+                {/* Typography Selector (Show if no element selected OR text selected) */}
+                {(!selectedElement) && (
+                  <div className="mb-4">
+                     <label className="text-xs font-semibold text-gray-600 mb-1 block">Font Pairing</label>
+                     <div className="grid grid-cols-2 gap-2">
+                       {FONT_PAIRS.map(font => (
+                         <button
+                           key={font.name}
+                           onClick={() => handleFontChange(currentSlide.id, font.name)}
+                           className={`text-xs p-2 border rounded-lg text-left transition-all ${
+                             currentSlide.fontPair?.name === font.name 
+                             ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium shadow-sm' 
+                             : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                           }`}
+                         >
+                           {font.name}
+                         </button>
+                       ))}
+                     </div>
+                  </div>
+                )}
+
+                {/* Text Editing Tools (Paraphrase & Emoji for Text) */}
+                {(selectedElement === 'title' || selectedElement === 'content') && (
+                   <div className="grid grid-cols-2 gap-2 mb-3">
+                      <button
+                        onClick={() => handleParaphrase(currentSlide.id, selectedElement)}
+                        disabled={isGenerating}
+                        className="flex items-center justify-center gap-2 p-2 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold hover:bg-purple-100 border border-purple-100 transition-colors"
+                      >
+                         <Wand2 className="w-3.5 h-3.5" /> 
+                         AI Rewrite
+                      </button>
+                      <button
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className={`flex items-center justify-center gap-2 p-2 rounded-lg text-xs font-semibold border transition-colors ${showEmojiPicker ? 'bg-blue-100 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'}`}
+                      >
+                         <Smile className="w-3.5 h-3.5" />
+                         Insert Emoji
+                      </button>
+                   </div>
+                )}
+
+                {/* Position Controls */}
+                {selectedElement && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 mb-2">
+                      <div>
+                        <div className="flex justify-between text-[10px] text-gray-400 mb-1 font-mono uppercase">Pos X</div>
+                        <input 
+                          type="range" min="-400" max="400" step="5" 
+                          value={currentPos.x}
+                          onChange={(e) => handlePositionUpdate(currentSlide.id, selectedElement, 'x', parseInt(e.target.value))}
+                          className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[10px] text-gray-400 mb-1 font-mono uppercase">Pos Y</div>
+                        <input 
+                          type="range" min="-400" max="400" step="5" 
+                          value={currentPos.y}
+                          onChange={(e) => handlePositionUpdate(currentSlide.id, selectedElement, 'y', parseInt(e.target.value))}
+                          className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                {/* Image Specific */}
+                {selectedElement === 'image' && (
+                  <div className="mt-2 pt-2 border-t border-gray-100">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1 font-mono">
+                      <span>Scale</span>
+                      <span>{Math.round((currentSlide.imageScale || 1) * 100)}%</span>
+                    </div>
+                    <input 
+                      type="range" min="0.5" max="1.5" step="0.05" 
+                      value={currentSlide.imageScale || 1}
+                      onChange={(e) => handleImageScaleUpdate(currentSlide.id, parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    />
+                  </div>
+                )}
+
+                {/* Text Alignment */}
+                {(selectedElement === 'title' || selectedElement === 'content') && (
+                   <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-gray-100">
+                      <button onClick={() => handleTextAlignUpdate(currentSlide.id, 'left')} className={`p-1.5 rounded ${currentSlide.textAlign === 'left' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:bg-gray-100'}`}><AlignLeft className="w-4 h-4" /></button>
+                      <button onClick={() => handleTextAlignUpdate(currentSlide.id, 'center')} className={`p-1.5 rounded ${currentSlide.textAlign === 'center' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:bg-gray-100'}`}><AlignCenter className="w-4 h-4" /></button>
+                      <button onClick={() => handleTextAlignUpdate(currentSlide.id, 'right')} className={`p-1.5 rounded ${currentSlide.textAlign === 'right' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:bg-gray-100'}`}><AlignRight className="w-4 h-4" /></button>
+                   </div>
+                )}
+
               </div>
             )}
 
@@ -748,15 +963,36 @@ const App: React.FC = () => {
                   </div>
                 )}
                 
+                {showEmojiPicker && (
+                  <div className="absolute bottom-20 left-4 z-50 animate-in slide-in-from-bottom-5">
+                    <EmojiPicker 
+                      onEmojiClick={onEmojiClick}
+                      theme={Theme.LIGHT}
+                      width={300}
+                      height={400}
+                    />
+                  </div>
+                )}
+
                 <form onSubmit={handleChatSubmit} className="relative flex items-center gap-2">
-                  <button 
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
-                      title="Attach Image"
-                  >
-                      <Paperclip className="w-5 h-5" />
-                  </button>
+                  <div className="flex gap-1">
+                    <button 
+                        type="button"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className={`p-3 rounded-xl transition-colors ${showEmojiPicker ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}
+                        title="Add Emoji"
+                    >
+                        <Smile className="w-5 h-5" />
+                    </button>
+                    <button 
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                        title="Attach Image"
+                    >
+                        <Paperclip className="w-5 h-5" />
+                    </button>
+                  </div>
                   
                   <div className="relative flex-1">
                     <input
@@ -764,6 +1000,9 @@ const App: React.FC = () => {
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
                         onPaste={handlePaste}
+                        onFocus={() => {
+                          if (!selectedElement) setShowEmojiPicker(false)
+                        }} 
                         placeholder={getChatPlaceholder()}
                         className="w-full pl-4 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm transition-all"
                     />
@@ -781,37 +1020,20 @@ const App: React.FC = () => {
                 </form>
             </div>
 
-            {/* Footer Buttons: Export & New */}
+            {/* Footer Buttons */}
             <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-col gap-3 min-w-[24rem]">
               <div className="grid grid-cols-2 gap-3">
-                <button
-                   type="button"
-                   onClick={handleExportPDF}
-                   disabled={isGenerating}
-                   className="py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
-                   title="Download as PDF Document"
-                 >
+                <button onClick={handleExportPDF} disabled={isGenerating} className="py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
                    {isGenerating && loadingMessage.includes('PDF') ? <Loader2 className="animate-spin w-4 h-4" /> : <FileDown className="w-4 h-4" />}
                    Export PDF
                  </button>
-                 <button
-                   type="button"
-                   onClick={handleExportZIP}
-                   disabled={isGenerating}
-                   className="py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
-                   title="Download individual images (for Instagram)"
-                 >
+                 <button onClick={handleExportZIP} disabled={isGenerating} className="py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
                    {isGenerating && loadingMessage.includes('ZIP') ? <Loader2 className="animate-spin w-4 h-4" /> : <Images className="w-4 h-4" />}
                    Export Images
                  </button>
               </div>
 
-               <button
-                 type="button"
-                 onClick={handleCreateNew}
-                 disabled={isGenerating}
-                 className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2"
-               >
+               <button onClick={handleCreateNew} disabled={isGenerating} className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2">
                  <PlusCircle className="w-4 h-4" />
                  Create New
                </button>
@@ -822,50 +1044,30 @@ const App: React.FC = () => {
 
       {/* MAIN PREVIEW AREA */}
       <div className="flex-1 bg-gray-100 relative overflow-hidden flex flex-col h-full">
-        {/* NEW TOP BAR: Navigation & Info */}
+        {/* NEW TOP BAR */}
         <div className="bg-white/80 backdrop-blur-md border-b border-gray-200 px-4 h-16 flex items-center justify-between shadow-sm z-20 shrink-0">
-          
-          {/* LEFT: Sidebar Toggle */}
           <div className="flex-1 flex items-center">
-              <button 
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition-colors"
-                title={isSidebarOpen ? "Close Sidebar" : "Open Sidebar"}
-              >
+              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition-colors">
                 {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
               </button>
           </div>
 
-          {/* CENTER: Navigation Controls */}
           <div className="flex items-center gap-4">
              {slides.length > 0 && (
                 <>
-                  <button 
-                    onClick={handlePrevSlide}
-                    disabled={!selectedSlideId || slides.findIndex(s => s.id === selectedSlideId) === 0}
-                    className="p-2 hover:bg-gray-100 rounded-full disabled:opacity-30 transition-colors text-gray-700"
-                  >
+                  <button onClick={handlePrevSlide} disabled={!selectedSlideId || slides.findIndex(s => s.id === selectedSlideId) === 0} className="p-2 hover:bg-gray-100 rounded-full disabled:opacity-30 transition-colors text-gray-700">
                     <ChevronLeft className="w-5 h-5" />
                   </button>
-                  
                   <span className="text-sm font-bold text-gray-700 min-w-[3rem] text-center select-none font-mono">
-                    {selectedSlideId 
-                      ? `${slides.findIndex(s => s.id === selectedSlideId) + 1} / ${slides.length}` 
-                      : '-'}
+                    {selectedSlideId ? `${slides.findIndex(s => s.id === selectedSlideId) + 1} / ${slides.length}` : '-'}
                   </span>
-
-                  <button 
-                    onClick={handleNextSlide}
-                    disabled={!selectedSlideId || slides.findIndex(s => s.id === selectedSlideId) === slides.length - 1}
-                    className="p-2 hover:bg-gray-100 rounded-full disabled:opacity-30 transition-colors text-gray-700"
-                  >
+                  <button onClick={handleNextSlide} disabled={!selectedSlideId || slides.findIndex(s => s.id === selectedSlideId) === slides.length - 1} className="p-2 hover:bg-gray-100 rounded-full disabled:opacity-30 transition-colors text-gray-700">
                     <ChevronRight className="w-5 h-5" />
                   </button>
                 </>
              )}
           </div>
 
-          {/* RIGHT: Status Indicator */}
           <div className="flex-1 flex justify-end items-center">
             {isGenerating && (
               <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full flex items-center gap-2 font-medium animate-pulse">
@@ -876,7 +1078,7 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Slides Container - Clean Padding */}
+        {/* Slides Container */}
         <div 
           className={`flex-1 overflow-x-auto overflow-y-hidden p-8 flex items-center gap-12 snap-x snap-mandatory ${isGenerating ? 'pointer-events-none opacity-50' : ''}`}
           ref={slidesContainerRef}
@@ -905,7 +1107,7 @@ const App: React.FC = () => {
                     onElementSelect={(el) => {
                       setSelectedSlideId(slide.id);
                       setSelectedElement(el);
-                      if (!isSidebarOpen) setIsSidebarOpen(true); // Auto-open sidebar when editing
+                      if (!isSidebarOpen) setIsSidebarOpen(true); 
                     }}
                     onRegenerateImage={(e) => handleRegenerateImage(e, slide.id)}
                     onTitleChange={(newTitle) => handleSlideTitleUpdate(slide.id, newTitle)}

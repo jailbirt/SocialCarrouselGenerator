@@ -104,54 +104,76 @@ export const SlideView: React.FC<SlideViewProps> = ({
   };
 
   // Common Image Component - Floating Style
-  const SlideImage = () => (
-    <div 
-      className={`w-full h-full relative group/image flex items-center justify-center transition-all duration-200 z-10
-        ${selectedElement === 'image' && !isExport ? 'ring-4 ring-blue-500 ring-offset-4' : ''}`}
-      onClick={(e) => handleElementClick(e, 'image')}
-    >
-      {slide.isGeneratingImage ? (
-        <div className="w-full h-full flex items-center justify-center animate-pulse bg-gray-50/50 rounded-3xl">
-          <ImageIcon className="w-24 h-24 text-gray-300" />
-        </div>
-      ) : slide.imageBase64 ? (
-          <div className="relative w-full h-full flex items-center justify-center z-10">
-            <img 
-              src={slide.imageBase64.startsWith('data:') ? slide.imageBase64 : `data:image/png;base64,${slide.imageBase64}`} 
-              alt="Slide visual" 
-              className="max-w-full max-h-full object-contain drop-shadow-xl relative z-10 transition-transform duration-200"
-              style={{
-                transform: `scale(${slide.imageScale || 1})`
-              }}
-            />
-            {!isExport && (
-              <div 
-                className={`absolute inset-0 flex items-center justify-center transition-opacity cursor-pointer z-20
-                  ${selectedElement === 'image' ? 'opacity-100' : 'opacity-0 group-hover/image:opacity-100'}`}
-              >
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onRegenerateImage(e); }}
-                  className="bg-white/90 backdrop-blur text-gray-900 px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-lg border border-gray-200 hover:bg-white transform scale-90 hover:scale-100 transition-transform"
-                >
-                    <RefreshCw className="w-5 h-5" /> Regenerate
-                </button>
-              </div>
-            )}
+  const SlideImage = () => {
+    // Apply position transform to wrapper
+    const transformStyle = {
+       transform: `translate(${slide.imagePos?.x || 0}px, ${slide.imagePos?.y || 0}px)`,
+       transition: isExport ? 'none' : 'transform 0.1s ease-out'
+    };
+
+    return (
+      <div 
+        className={`w-full h-full relative group/image flex items-center justify-center z-10
+          ${selectedElement === 'image' && !isExport ? 'ring-4 ring-blue-500 ring-offset-4' : ''}`}
+        style={transformStyle}
+        onClick={(e) => handleElementClick(e, 'image')}
+      >
+        {slide.isGeneratingImage ? (
+          <div className="w-full h-full flex items-center justify-center animate-pulse bg-gray-50/50 rounded-3xl">
+            <ImageIcon className="w-24 h-24 text-gray-300" />
           </div>
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-gray-400 flex-col gap-2 bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-200/50">
-            <ImageIcon className="w-16 h-16 opacity-50" />
-            <span>Select to Add Image</span>
-        </div>
-      )}
-    </div>
-  );
+        ) : slide.imageBase64 ? (
+            <div className="relative w-full h-full flex items-center justify-center z-10">
+              <img 
+                src={slide.imageBase64.startsWith('data:') ? slide.imageBase64 : `data:image/png;base64,${slide.imageBase64}`} 
+                alt="Slide visual" 
+                className="max-w-full max-h-full object-contain drop-shadow-xl relative z-10 transition-transform duration-200"
+                style={{
+                  transform: `scale(${slide.imageScale || 1})`
+                }}
+              />
+              {!isExport && (
+                <div 
+                  className={`absolute inset-0 flex items-center justify-center transition-opacity cursor-pointer z-20
+                    ${selectedElement === 'image' ? 'opacity-100' : 'opacity-0 group-hover/image:opacity-100'}`}
+                >
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onRegenerateImage(e); }}
+                    className="bg-white/90 backdrop-blur text-gray-900 px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-lg border border-gray-200 hover:bg-white transform scale-90 hover:scale-100 transition-transform"
+                  >
+                      <RefreshCw className="w-5 h-5" /> Regenerate
+                  </button>
+                </div>
+              )}
+            </div>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400 flex-col gap-2 bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-200/50">
+              <ImageIcon className="w-16 h-16 opacity-50" />
+              <span>Select to Add Image</span>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const getElementStyle = (element: SlideElement) => {
-    if (!isEditable || isExport) return {};
-    return selectedElement === element 
+    const baseStyle = {
+      cursor: isEditable && !isExport ? 'pointer' : 'default',
+    };
+    
+    // Selection ring
+    const selectionStyle = selectedElement === element && isEditable && !isExport
       ? { outline: '4px solid #3b82f6', outlineOffset: '8px', borderRadius: '4px', cursor: 'text' }
-      : { cursor: 'pointer' };
+      : {};
+
+    // Position Transform
+    const pos = element === 'title' ? slide.titlePos : element === 'content' ? slide.contentPos : {x:0, y:0};
+    const transformStyle = {
+        transform: `translate(${pos?.x || 0}px, ${pos?.y || 0}px)`,
+        transition: isExport ? 'none' : 'transform 0.1s ease-out'
+    };
+
+    return { ...baseStyle, ...selectionStyle, ...transformStyle };
   };
 
   const renderContent = () => {
@@ -165,13 +187,25 @@ export const SlideView: React.FC<SlideViewProps> = ({
     const titleClass = `text-9xl font-bold ${leadingClass} outline-none whitespace-pre-line tracking-tight py-4 relative z-20`;
     const contentClass = `text-6xl leading-normal font-medium outline-none whitespace-pre-line py-2 relative z-20`;
 
-    const titleStyle = { color: palette.text, fontFamily: "'Space Grotesk', sans-serif" };
-    const contentStyle = { color: palette.text, fontFamily: "'Inter', sans-serif" };
+    // DYNAMIC FONT STYLES
+    const titleStyle = { 
+        color: palette.text, 
+        fontFamily: slide.fontPair?.title || "'Space Grotesk', sans-serif" 
+    };
+    const contentStyle = { 
+        color: palette.text, 
+        fontFamily: slide.fontPair?.body || "'Inter', sans-serif" 
+    };
+    
+    // Alignment Class
+    const alignClass = slide.textAlign === 'left' ? 'text-left items-start' : slide.textAlign === 'right' ? 'text-right items-end' : 'text-center items-center';
+    const flexAlignClass = slide.textAlign === 'left' ? 'items-start' : slide.textAlign === 'right' ? 'items-end' : 'items-center';
+
 
     switch (slide.layout) {
       case 'text-only':
         return (
-          <div className="flex-1 flex flex-col justify-center items-center p-20 gap-16 text-center">
+          <div className={`flex-1 flex flex-col justify-center p-20 gap-16 ${alignClass}`}>
              <div className="w-full relative z-20" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
                   className={titleClass}
@@ -200,7 +234,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
       case 'text-image-text':
           return (
             <div className="flex-1 flex flex-col h-full p-16 gap-6">
-              <div className="flex-none pt-4 flex justify-center items-center text-center relative z-20" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
+              <div className={`flex-none pt-4 flex justify-center relative z-20 ${alignClass}`} style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
                   className={`text-7xl font-bold ${leadingClass} outline-none whitespace-pre-line max-w-4xl py-2`}
                   style={titleStyle}
@@ -219,7 +253,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
                  </div>
               </div>
 
-              <div className="flex-none pb-8 flex justify-center text-center relative z-20" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
+              <div className={`flex-none pb-8 flex justify-center relative z-20 ${alignClass}`} style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
                   className={`text-5xl leading-normal font-medium outline-none whitespace-pre-line max-w-3xl py-2`}
                   style={contentStyle}
@@ -243,7 +277,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
                </div>
             </div>
             {/* Increased from 50% to 62% */}
-            <div className="h-[62%] w-full p-16 flex flex-col gap-10 justify-start items-center text-center relative z-20">
+            <div className={`h-[62%] w-full p-16 flex flex-col gap-10 justify-start relative z-20 ${flexAlignClass} ${alignClass}`}>
               <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
                   className={`text-8xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
@@ -275,7 +309,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
         return (
           <div className="flex-1 flex flex-col h-full">
             {/* Increased from 45% to 62% */}
-            <div className="h-[62%] w-full p-16 flex flex-col gap-10 justify-end items-center text-center relative z-20">
+            <div className={`h-[62%] w-full p-16 flex flex-col gap-10 justify-end relative z-20 ${flexAlignClass} ${alignClass}`}>
               <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
                   className={`text-8xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}

@@ -30,7 +30,7 @@ const runWithRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 4000):
   }
 };
 
-export const generateCarouselStructure = async (topic: string, style: string = 'Corporate Vector'): Promise<Omit<Slide, 'id' | 'imageBase64' | 'isGeneratingImage'>[]> => {
+export const generateCarouselStructure = async (topic: string, style: string = 'Corporate Vector'): Promise<Omit<Slide, 'id' | 'imageBase64' | 'isGeneratingImage' | 'fontPair'>[]> => {
   const response = await ai.models.generateContent({
     model: TEXT_MODEL,
     contents: `
@@ -219,4 +219,26 @@ export const updateSpecificSlideField = async (
   });
 
   return response.text || currentText;
+};
+
+// NEW: Paraphrase function
+export const paraphraseText = async (textToRewrite: string): Promise<string> => {
+  const response = await ai.models.generateContent({
+    model: TEXT_MODEL,
+    contents: `
+    Task: Paraphrase and improve the following text for a LinkedIn slide. 
+    Make it more engaging, professional, and concise.
+
+    Input Text: "${textToRewrite}"
+
+    Rules:
+    1. Keep the same language (Spanish/English) as input.
+    2. Keep any markdown like **bold** or [[brackets]].
+    3. Return ONLY the rewritten text.
+    `,
+    config: {
+      responseMimeType: "text/plain",
+    }
+  });
+  return response.text || textToRewrite;
 };

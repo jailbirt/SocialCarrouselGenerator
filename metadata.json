@@ -1,5 +1,5 @@
 {
-  "name": "LinkeGen - Carousel Creator",
+  "name": "CarrouselGenerator",
   "description": "AI-powered LinkedIn Carousel generator with advanced image editing capabilities using Gemini 2.5 Flash.",
   "requestFramePermissions": []
 }
