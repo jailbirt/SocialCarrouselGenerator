@@ -1,7 +1,6 @@
 export interface Palette {
   background: string;
-  title: string;
-  body: string;
+  text: string;
   accent: string;
 }
 
@@ -17,6 +16,7 @@ export interface Slide {
   imageBase64: string | null; // Base64 string for the image
   isGeneratingImage: boolean;
   layout: SlideLayout;
+  imageScale?: number; // New property for manual resizing
 }
 
 export interface ChatMessage {

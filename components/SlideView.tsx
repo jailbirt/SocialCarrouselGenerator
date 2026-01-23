@@ -55,16 +55,14 @@ export const SlideView: React.FC<SlideViewProps> = ({
     const parts = cleanText.split(/(\*\*[\s\S]*?\*\*|\[\[[\s\S]*?\]\])/g);
     
     return parts.map((part, i) => {
-      // HIGHLIGHTED TEXT (**text**) -> Solid Color Block
+      // HIGHLIGHTED TEXT (**text**) -> Background is Accent, Text is Background Color (High Contrast)
       if (part.startsWith('**') && part.endsWith('**')) {
         const content = part.slice(2, -2);
         
-        // With html-to-image, we can trust standard browser rendering more than html2canvas.
-        // We use box-decoration-break to ensure padding wraps correctly on new lines.
         return (
           <span key={i} style={{ 
-            backgroundColor: palette.title,
-            color: palette.body,
+            backgroundColor: palette.accent,
+            color: palette.background, // Contrast against accent
             padding: '0.1em 0.15em',
             borderRadius: '0.1em',
             display: 'inline',
@@ -78,12 +76,12 @@ export const SlideView: React.FC<SlideViewProps> = ({
         );
       }
       
-      // BOXED TEXT ([[text]]) -> Blue Pill Button Style
+      // BOXED TEXT ([[text]]) -> Background is Main Text Color, Text is Background Color (Inverted)
       if (part.startsWith('[[') && part.endsWith(']]')) {
         return (
           <span key={i} className="inline-block" style={{ 
-            backgroundColor: palette.accent,
-            color: '#ffffff',
+            backgroundColor: palette.text,
+            color: palette.background,
             padding: '0.25em 0.8em',
             borderRadius: '999px',
             fontWeight: '600',
@@ -113,7 +111,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
       onClick={(e) => handleElementClick(e, 'image')}
     >
       {slide.isGeneratingImage ? (
-        <div className="w-full h-full flex items-center justify-center animate-pulse bg-gray-50 rounded-3xl">
+        <div className="w-full h-full flex items-center justify-center animate-pulse bg-gray-50/50 rounded-3xl">
           <ImageIcon className="w-24 h-24 text-gray-300" />
         </div>
       ) : slide.imageBase64 ? (
@@ -121,7 +119,10 @@ export const SlideView: React.FC<SlideViewProps> = ({
             <img 
               src={slide.imageBase64.startsWith('data:') ? slide.imageBase64 : `data:image/png;base64,${slide.imageBase64}`} 
               alt="Slide visual" 
-              className="max-w-full max-h-full object-contain drop-shadow-xl relative z-10"
+              className="max-w-full max-h-full object-contain drop-shadow-xl relative z-10 transition-transform duration-200"
+              style={{
+                transform: `scale(${slide.imageScale || 1})`
+              }}
             />
             {!isExport && (
               <div 
@@ -138,7 +139,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
             )}
           </div>
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-gray-400 flex-col gap-2 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+        <div className="w-full h-full flex items-center justify-center text-gray-400 flex-col gap-2 bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-200/50">
             <ImageIcon className="w-16 h-16 opacity-50" />
             <span>Select to Add Image</span>
         </div>
@@ -160,11 +161,12 @@ export const SlideView: React.FC<SlideViewProps> = ({
     // Standard leading for consistency
     const leadingClass = 'leading-tight';
     
+    // Removed 'text-gray-600' to allow palette.text to take effect via style
     const titleClass = `text-9xl font-bold ${leadingClass} outline-none whitespace-pre-line tracking-tight py-4 relative z-20`;
-    const contentClass = `text-6xl leading-normal font-medium text-gray-600 outline-none whitespace-pre-line py-2 relative z-20`;
+    const contentClass = `text-6xl leading-normal font-medium outline-none whitespace-pre-line py-2 relative z-20`;
 
-    const titleStyle = { color: palette.body, fontFamily: "'Space Grotesk', sans-serif" };
-    const contentStyle = { fontFamily: "'Inter', sans-serif" };
+    const titleStyle = { color: palette.text, fontFamily: "'Space Grotesk', sans-serif" };
+    const contentStyle = { color: palette.text, fontFamily: "'Inter', sans-serif" };
 
     switch (slide.layout) {
       case 'text-only':
@@ -197,8 +199,8 @@ export const SlideView: React.FC<SlideViewProps> = ({
       
       case 'text-image-text':
           return (
-            <div className="flex-1 flex flex-col h-full p-16 gap-10">
-              <div className="flex-none pt-8 flex justify-center items-center text-center relative z-20" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
+            <div className="flex-1 flex flex-col h-full p-16 gap-6">
+              <div className="flex-none pt-4 flex justify-center items-center text-center relative z-20" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
                   className={`text-7xl font-bold ${leadingClass} outline-none whitespace-pre-line max-w-4xl py-2`}
                   style={titleStyle}
@@ -210,7 +212,8 @@ export const SlideView: React.FC<SlideViewProps> = ({
                 </h2>
               </div>
               
-              <div className="flex-1 min-h-0 w-full px-4 flex justify-center relative z-10">
+              {/* Reduced image height for this layout to prioritize text */}
+              <div className="flex-1 min-h-0 w-full px-12 flex justify-center relative z-10 max-h-[35%]">
                  <div className="w-full h-full">
                    <SlideImage />
                  </div>
@@ -218,7 +221,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
 
               <div className="flex-none pb-8 flex justify-center text-center relative z-20" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
-                  className={`text-5xl leading-normal font-medium text-gray-600 outline-none whitespace-pre-line max-w-3xl py-2`}
+                  className={`text-5xl leading-normal font-medium outline-none whitespace-pre-line max-w-3xl py-2`}
                   style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
@@ -233,15 +236,17 @@ export const SlideView: React.FC<SlideViewProps> = ({
       case 'image-top':
         return (
           <div className="flex-1 flex flex-col h-full">
-            <div className="h-[50%] w-full p-12 pb-4 flex justify-center items-end relative z-10">
-               <div className="w-[90%] h-[90%]">
+            {/* Reduced from 50% to 38% */}
+            <div className="h-[38%] w-full p-12 pb-4 flex justify-center items-end relative z-10">
+               <div className="w-[85%] h-[90%]">
                  <SlideImage />
                </div>
             </div>
-            <div className="h-[50%] w-full p-16 flex flex-col gap-10 justify-start items-center text-center relative z-20">
+            {/* Increased from 50% to 62% */}
+            <div className="h-[62%] w-full p-16 flex flex-col gap-10 justify-start items-center text-center relative z-20">
               <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
-                  className={`text-7xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
+                  className={`text-8xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
                   style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
@@ -252,7 +257,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
               </div>
               <div className="w-full max-w-3xl" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
-                  className={`text-5xl leading-normal font-medium text-gray-600 outline-none whitespace-pre-line py-2`}
+                  className={`text-6xl leading-normal font-medium outline-none whitespace-pre-line py-2`}
                   style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
@@ -269,10 +274,11 @@ export const SlideView: React.FC<SlideViewProps> = ({
       default:
         return (
           <div className="flex-1 flex flex-col h-full">
-            <div className="h-[45%] w-full p-16 flex flex-col gap-10 justify-end items-center text-center relative z-20">
+            {/* Increased from 45% to 62% */}
+            <div className="h-[62%] w-full p-16 flex flex-col gap-10 justify-end items-center text-center relative z-20">
               <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
-                  className={`text-7xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
+                  className={`text-8xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
                   style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
@@ -283,7 +289,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
               </div>
               <div className="w-full max-w-3xl" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
-                  className={`text-5xl leading-normal font-medium text-gray-600 outline-none whitespace-pre-line py-2`}
+                  className={`text-6xl leading-normal font-medium outline-none whitespace-pre-line py-2`}
                   style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
@@ -293,8 +299,9 @@ export const SlideView: React.FC<SlideViewProps> = ({
                 </div>
               </div>
             </div>
-            <div className="h-[55%] w-full p-12 pt-4 flex justify-center items-start relative z-10">
-               <div className="w-[90%] h-[90%]">
+             {/* Reduced from 55% to 38% */}
+            <div className="h-[38%] w-full p-12 pt-4 flex justify-center items-start relative z-10">
+               <div className="w-[85%] h-[90%]">
                  <SlideImage />
                </div>
             </div>
@@ -322,7 +329,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
       <div 
         className="w-full h-full flex flex-col overflow-hidden relative"
         style={{
-          backgroundColor: '#FFFFFF',
+          backgroundColor: palette.background, // DYNAMIC BACKGROUND COLOR
           transform: `scale(${scale})`,
           transformOrigin: 'top left',
           width: `${width}px`,

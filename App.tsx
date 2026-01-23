@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Slide, Palette, ChatMessage, SlideElement } from './types';
 import { generateCarouselStructure, generateSlideImage, editSlideImage, determineEditIntent, updateSlideContent, updateSpecificSlideField } from './services/geminiService';
 import { SlideView } from './components/SlideView';
-import { toPng } from 'html-to-image';
+import { toJpeg } from 'html-to-image';
 import jsPDF from 'jspdf';
+import JSZip from 'jszip';
 import { 
   Send, 
   Download, 
@@ -22,19 +23,32 @@ import {
   PlusCircle,
   Trash2,
   Info,
-  AlertCircle
+  AlertCircle,
+  Paintbrush,
+  Images,
+  FileDown,
+  Maximize
 } from 'lucide-react';
 
 const INITIAL_PALETTE: Palette = {
-  background: '#fcfcfc',
-  title: '#FC9633',
-  body: '#004E96',
-  accent: '#004E96'
+  background: '#1a1a1a', // Dark background by default to show off the feature
+  text: '#ffffff',       // White text
+  accent: '#3b82f6'      // Blue accent
 };
+
+const STYLE_PRESETS = [
+  "Corporate Vector (Default)",
+  "Hyper-realistic Photo",
+  "3D Render (Pixar Style)",
+  "Minimalist Line Art",
+  "Cyberpunk Neon",
+  "Hand Drawn Sketch"
+];
 
 const App: React.FC = () => {
   // --- State ---
   const [topic, setTopic] = useState('');
+  const [imageStyle, setImageStyle] = useState('Corporate Vector'); // New State for Image Style
   const [slides, setSlides] = useState<Slide[]>([]);
   const [palette, setPalette] = useState<Palette>(INITIAL_PALETTE);
   
@@ -136,6 +150,7 @@ const App: React.FC = () => {
     // Force reset of all states
     setSlides([]);
     setTopic('');
+    setImageStyle('Corporate Vector'); // Reset style
     setChatHistory([]);
     setSelectedSlideId(null);
     setSelectedElement(null);
@@ -160,14 +175,16 @@ const App: React.FC = () => {
     setChatHistory([]);
 
     try {
-      const rawSlides = await generateCarouselStructure(topic);
+      // Pass imageStyle to structure generator
+      const rawSlides = await generateCarouselStructure(topic, imageStyle);
       
       const newSlides: Slide[] = rawSlides.map((s, index) => ({
         ...s,
         id: `slide-${Date.now()}-${index}`,
         imageBase64: null,
         isGeneratingImage: true,
-        layout: s.layout || 'image-bottom'
+        layout: s.layout || 'image-bottom',
+        imageScale: 1.0 // Default scale
       }));
 
       setSlides(newSlides);
@@ -195,7 +212,8 @@ const App: React.FC = () => {
       }
 
       try {
-        const base64 = await generateSlideImage(updatedSlides[i].imagePrompt);
+        // Pass global imageStyle
+        const base64 = await generateSlideImage(updatedSlides[i].imagePrompt, imageStyle);
         setSlides(prev => prev.map(s => s.id === updatedSlides[i].id ? { ...s, imageBase64: base64, isGeneratingImage: false } : s));
       } catch (e) {
         console.error(`Failed to generate image for slide ${i}`, e);
@@ -216,7 +234,8 @@ const App: React.FC = () => {
 
     setSlides(prev => prev.map(s => s.id === slideId ? { ...s, isGeneratingImage: true } : s));
     try {
-      const base64 = await generateSlideImage(slide.imagePrompt);
+      // Use the global imageStyle for regeneration
+      const base64 = await generateSlideImage(slide.imagePrompt, imageStyle);
       setSlides(prev => prev.map(s => s.id === slideId ? { ...s, imageBase64: base64, isGeneratingImage: false } : s));
     } catch (error) {
        console.error(error);
@@ -230,6 +249,10 @@ const App: React.FC = () => {
 
   const handleSlideTitleUpdate = (id: string, newTitle: string) => {
     setSlides(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
+  };
+
+  const handleImageScaleUpdate = (id: string, scale: number) => {
+    setSlides(prev => prev.map(s => s.id === id ? { ...s, imageScale: scale } : s));
   };
 
   // --- Image Upload & Chat Handlers ---
@@ -299,7 +322,8 @@ const App: React.FC = () => {
           setLoadingMessage('Generating image...');
           setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, isGeneratingImage: true } : s));
           try {
-            const newImage = await generateSlideImage(userMsg);
+            // Pass style to generation
+            const newImage = await generateSlideImage(userMsg, imageStyle);
             setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, imageBase64: newImage, isGeneratingImage: false } : s));
             setChatHistory(prev => [...prev, { role: 'model', text: "I've generated a new image." }]);
           } catch (err) {
@@ -309,7 +333,7 @@ const App: React.FC = () => {
            setLoadingMessage('Editing image...');
            setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, isGeneratingImage: true } : s));
            try {
-             const newImage = await editSlideImage(currentSlide.imageBase64!, userMsg);
+             const newImage = await editSlideImage(currentSlide.imageBase64!, userMsg, imageStyle);
              setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, imageBase64: newImage, isGeneratingImage: false } : s));
              setChatHistory(prev => [...prev, { role: 'model', text: "I've updated the image." }]);
            } catch (err) {
@@ -345,7 +369,7 @@ const App: React.FC = () => {
            return;
         }
         setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, isGeneratingImage: true } : s));
-        const newImage = await editSlideImage(currentSlide.imageBase64!, userMsg);
+        const newImage = await editSlideImage(currentSlide.imageBase64!, userMsg, imageStyle);
         setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, imageBase64: newImage, isGeneratingImage: false } : s));
         setChatHistory(prev => [...prev.slice(0, -1), { role: 'model', text: "Image updated." }]);
       } else {
@@ -361,7 +385,7 @@ const App: React.FC = () => {
 
   const handleExportPDF = async () => {
     if (slides.length === 0) return;
-    setLoadingMessage('Exporting PDF...');
+    setLoadingMessage('Exporting Optimized PDF...');
     setIsGenerating(true);
 
     try {
@@ -379,23 +403,77 @@ const App: React.FC = () => {
       for (let i = 0; i < slides.length; i++) {
         const slideElement = document.getElementById(`slide-render-${slides[i].id}`);
         if (slideElement) {
-          // Use html-to-image (toPng) instead of html2canvas
-          // This uses SVG foreignObject rendering which is much more accurate for CSS layouts
-          const imgData = await toPng(slideElement, {
-            quality: 0.95,
-            pixelRatio: 2, // High resolution for crisp text
-            backgroundColor: '#ffffff',
-            cacheBust: true, // Ensures fonts are fetched freshly if needed
+          // SWITCH TO JPEG AND LOWER QUALITY FOR SMALLER FILE SIZE
+          const imgData = await toJpeg(slideElement, {
+            quality: 0.80, // 80% quality (Good balance)
+            pixelRatio: 1.0, // 1:1 pixel mapping (drastically reduces resolution from 2x retina)
+            backgroundColor: palette.background, // USE PALETTE BACKGROUND
+            cacheBust: true,
           });
 
           if (i > 0) pdf.addPage([1080, 1350]);
-          pdf.addImage(imgData, 'PNG', 0, 0, 1080, 1350);
+          // Use JPEG compression in PDF
+          pdf.addImage(imgData, 'JPEG', 0, 0, 1080, 1350);
         }
       }
       pdf.save('linkedin-carousel.pdf');
     } catch (error) {
       console.error(error);
       setErrorMessage("Failed to export PDF. Please check your browser settings or try again.");
+    } finally {
+      setIsGenerating(false);
+      setLoadingMessage('');
+    }
+  };
+
+  const handleExportZIP = async () => {
+    if (slides.length === 0) return;
+    setLoadingMessage('Zipping Images...');
+    setIsGenerating(true);
+
+    try {
+      await document.fonts.ready;
+    } catch (e) {
+      console.warn("Font loading check failed", e);
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const zip = new JSZip();
+
+    try {
+      for (let i = 0; i < slides.length; i++) {
+        const slideElement = document.getElementById(`slide-render-${slides[i].id}`);
+        if (slideElement) {
+          // Use JPEG for ZIP as well to keep file size reasonable
+          const imgData = await toJpeg(slideElement, {
+            quality: 0.90, // Slightly higher quality for individual images
+            pixelRatio: 1.0, 
+            backgroundColor: palette.background, // USE PALETTE BACKGROUND
+            cacheBust: true,
+          });
+          
+          // Remove the data URL prefix
+          const base64Data = imgData.replace(/^data:image\/jpeg;base64,/, "");
+          zip.file(`slide-${i + 1}.jpg`, base64Data, {base64: true});
+        }
+      }
+
+      const content = await zip.generateAsync({type: "blob"});
+      
+      // Create download link
+      const url = window.URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'instagram-carousel-images.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Failed to export ZIP. Please try again.");
     } finally {
       setIsGenerating(false);
       setLoadingMessage('');
@@ -413,9 +491,8 @@ const App: React.FC = () => {
   // Helper for palette tooltips
   const getPaletteTooltip = (key: string) => {
     switch(key) {
-      case 'accent': return 'Background for [[button]] elements';
-      case 'title': return 'Color for headings & **highlighted** text';
-      case 'body': return 'Color for standard paragraph text';
+      case 'accent': return 'Color for highlights (**) and buttons';
+      case 'text': return 'Color for all titles and body text';
       case 'background': return 'Main background color of the slides';
       default: return '';
     }
@@ -426,7 +503,7 @@ const App: React.FC = () => {
       
       {/* --- MODALS --- */}
       
-      {/* 1. Confirmation Modal (Replaces window.confirm) */}
+      {/* 1. Confirmation Modal */}
       {showResetConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
@@ -459,7 +536,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* 2. Error Modal (Replaces window.alert) */}
+      {/* 2. Error Modal */}
       {errorMessage && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200 border-l-4 border-red-500">
@@ -500,7 +577,6 @@ const App: React.FC = () => {
             <Sparkles className="text-blue-600 w-5 h-5" />
             LinkeGen
           </h1>
-          {/* Removed close button from here to unify control in top bar */}
         </div>
 
         {/* --- STATE A: CREATION MODE (No slides) --- */}
@@ -509,16 +585,56 @@ const App: React.FC = () => {
             <div className="space-y-4">
               <label className="text-sm font-bold text-gray-800 block">Topic or Description</label>
               <textarea
-                className="w-full p-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none h-40 transition-all text-sm leading-relaxed"
+                className="w-full p-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none h-32 transition-all text-sm leading-relaxed"
                 placeholder="e.g. 5 Tips for Remote Work Leadership..."
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 disabled={isGenerating}
               />
+
+              {/* IMAGE STYLE SELECTOR */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                  <Paintbrush className="w-4 h-4 text-blue-600" />
+                  Visual Style
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    list="style-suggestions"
+                    value={imageStyle}
+                    onChange={(e) => setImageStyle(e.target.value)}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                    placeholder="e.g. Hyper-realistic, 3D Render..."
+                    disabled={isGenerating}
+                  />
+                  <datalist id="style-suggestions">
+                    {STYLE_PRESETS.map(style => (
+                      <option key={style} value={style} />
+                    ))}
+                  </datalist>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {STYLE_PRESETS.slice(0, 3).map((style) => (
+                    <button
+                      key={style}
+                      onClick={() => setImageStyle(style)}
+                      className={`text-xs px-2 py-1 rounded-md border transition-colors ${
+                        imageStyle === style 
+                        ? 'bg-blue-100 border-blue-200 text-blue-700' 
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {style.split(' ')[0]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <button
                 onClick={handleGenerate}
                 disabled={!topic.trim() || isGenerating}
-                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl font-semibold transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl font-semibold transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2 mt-4"
               >
                 {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
                 Generate Carousel
@@ -594,6 +710,30 @@ const App: React.FC = () => {
                 <div ref={chatEndRef} />
             </div>
 
+            {/* NEW: IMAGE RESIZE SLIDER (Appears only when image is selected) */}
+            {selectedElement === 'image' && selectedSlideId && (
+              <div className="p-4 bg-white border-t border-gray-200 animate-in slide-in-from-bottom-2">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-gray-700 flex items-center gap-2">
+                    <Maximize className="w-3 h-3 text-blue-600" />
+                    Image Size
+                  </label>
+                  <span className="text-xs font-mono text-gray-500">
+                    {Math.round((slides.find(s => s.id === selectedSlideId)?.imageScale || 1) * 100)}%
+                  </span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0.5" 
+                  max="1.5" 
+                  step="0.1" 
+                  value={slides.find(s => s.id === selectedSlideId)?.imageScale || 1}
+                  onChange={(e) => handleImageScaleUpdate(selectedSlideId, parseFloat(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                />
+              </div>
+            )}
+
             {/* Chat Input Area */}
             <div className="p-4 bg-white border-t border-gray-200 min-w-[24rem]">
                 {pendingImage && (
@@ -642,21 +782,35 @@ const App: React.FC = () => {
             </div>
 
             {/* Footer Buttons: Export & New */}
-            <div className="p-4 bg-gray-50 border-t border-gray-200 grid grid-cols-2 gap-3 min-w-[24rem]">
-              <button
-                 type="button"
-                 onClick={handleExportPDF}
-                 disabled={isGenerating}
-                 className="py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
-               >
-                 {isGenerating ? <Loader2 className="animate-spin w-4 h-4" /> : <Download className="w-4 h-4" />}
-                 Export PDF
-               </button>
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-col gap-3 min-w-[24rem]">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                   type="button"
+                   onClick={handleExportPDF}
+                   disabled={isGenerating}
+                   className="py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
+                   title="Download as PDF Document"
+                 >
+                   {isGenerating && loadingMessage.includes('PDF') ? <Loader2 className="animate-spin w-4 h-4" /> : <FileDown className="w-4 h-4" />}
+                   Export PDF
+                 </button>
+                 <button
+                   type="button"
+                   onClick={handleExportZIP}
+                   disabled={isGenerating}
+                   className="py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
+                   title="Download individual images (for Instagram)"
+                 >
+                   {isGenerating && loadingMessage.includes('ZIP') ? <Loader2 className="animate-spin w-4 h-4" /> : <Images className="w-4 h-4" />}
+                   Export Images
+                 </button>
+              </div>
+
                <button
                  type="button"
                  onClick={handleCreateNew}
                  disabled={isGenerating}
-                 className="py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                 className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                >
                  <PlusCircle className="w-4 h-4" />
                  Create New

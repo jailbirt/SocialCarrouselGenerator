@@ -30,40 +30,41 @@ const runWithRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 4000):
   }
 };
 
-export const generateCarouselStructure = async (topic: string): Promise<Omit<Slide, 'id' | 'imageBase64' | 'isGeneratingImage'>[]> => {
+export const generateCarouselStructure = async (topic: string, style: string = 'Corporate Vector'): Promise<Omit<Slide, 'id' | 'imageBase64' | 'isGeneratingImage'>[]> => {
   const response = await ai.models.generateContent({
     model: TEXT_MODEL,
     contents: `
-    Actúa como un Diseñador Visual Senior especializado en presentaciones de tecnología (Estilo Stripe, Apple, Notion).
+    Actúa como un Diseñador Visual Senior especializado en presentaciones de LinkedIn.
     INPUT USUARIO: "${topic}".
+    ESTILO VISUAL SOLICITADO: "${style}".
 
     ESTILO VISUAL Y DISEÑO (OBLIGATORIO):
-    1.  **Layout:** Simétrico, Centrado, Limpio. Mucho espacio en blanco.
-    2.  **Tipografía:** Gigante. Títulos masivos que ocupan el centro de atención.
-    3.  **Ilustración:** Estilo "Corporate Memphis" o Vector Plano. Fondos blancos, colores vibrantes pero profesionales.
+    1.  **Layout Dinámico:** Es CRÍTICO que mezcles diferentes layouts en el carrusel. NO uses el mismo layout consecutivamente.
+    2.  **Jerarquía:** El TEXTO es lo más importante. La imagen es un complemento visual pequeño.
+    3.  **Ilustración:** Las descripciones de imagen (imagePrompt) deben ser simples y limpias.
     
     REGLAS DE CONTENIDO:
-    - Textos EXTREMADAMENTE CORTOS. No escribas párrafos. Máximo 2 líneas por bloque de texto.
-    - El slide 1 (Gancho) debe tener un título de pocas palabras (3-6 palabras máximo) pero muy impactante.
+    - Textos claros y potentes.
+    - El slide 1 (Gancho) debe tener un título muy impactante.
 
     REGLAS DE FORMATO (CRÍTICO):
-    - **Highlights**: Usa **doble asterisco** para resaltar la parte más importante del título. Se verá como un subrayado/marcador.
-    - **Botones/Etiquetas**: Usa [[doble corchete]] para palabras de acción o etiquetas. Se verán como botones redondeados azules.
-    - **Emojis**: Úsalos con moderación para dar color (ej: ⚡, ✨, 🚀).
+    - **Highlights**: Usa **doble asterisco** para resaltar palabras clave.
+    - **Botones/Etiquetas**: Usa [[doble corchete]] para llamadas a la acción o etiquetas.
 
     ESTRUCTURA DE RESPUESTA (JSON):
     Devuelve un ARRAY JSON.
     
-    LAYOUTS PREFERIDOS:
-    - **text-image-text**: Título Grande Arriba -> Ilustración Central -> Bajada Corta Abajo. (Uso común).
-    - **image-top**: Ilustración Arriba -> Título Grande Centro -> Bajada Abajo.
-    - **text-only**: Título GIGANTE centrado. Ideal para portadas.
+    LAYOUTS DISPONIBLES (USAR VARIADOS):
+    - **text-image-text**: Título Arriba -> Imagen pequeña en medio -> Texto abajo.
+    - **image-top**: Imagen en tercio superior -> Texto dominando el resto.
+    - **image-bottom**: Texto dominando arriba -> Imagen en tercio inferior.
+    - **text-only**: Título GIGANTE centrado. Úsalo para slides de énfasis.
     
     Para cada slide:
-    - title: El titular (usa **..**, [[..]]).
-    - content: El texto secundario (usa **..**, [[..]]).
-    - imagePrompt: "Flat vector illustration, minimalist corporate memphis style, white background, [subject], vibrant tech colors".
-    - layout: 'text-image-text' | 'image-top' | 'image-bottom' | 'text-only'.
+    - title: El titular.
+    - content: El texto secundario.
+    - imagePrompt: "Simple description of subject. Style: ${style}".
+    - layout: Selecciona uno variado ('text-image-text' | 'image-top' | 'image-bottom' | 'text-only').
     `,
     config: {
       responseMimeType: "application/json",
@@ -88,12 +89,12 @@ export const generateCarouselStructure = async (topic: string): Promise<Omit<Sli
   return JSON.parse(text);
 };
 
-export const generateSlideImage = async (prompt: string): Promise<string> => {
+export const generateSlideImage = async (prompt: string, style: string = 'Corporate Vector'): Promise<string> => {
   return runWithRetry(async () => {
     const response = await ai.models.generateContent({
       model: IMAGE_MODEL,
       contents: {
-        parts: [{ text: `High quality, flat vector illustration, minimalist corporate memphis style, white background, no text inside image, clean lines, vibrant blue and orange accents: ${prompt}` }]
+        parts: [{ text: `High quality image. Style: ${style}. Context: ${prompt}. Ensure high resolution and correct proportions for the subject. If style involves people or logos, attempt realistic rendering.` }]
       }
     });
 
@@ -107,7 +108,7 @@ export const generateSlideImage = async (prompt: string): Promise<string> => {
   });
 };
 
-export const editSlideImage = async (currentImageBase64: string, instruction: string): Promise<string> => {
+export const editSlideImage = async (currentImageBase64: string, instruction: string, style: string = 'Corporate Vector'): Promise<string> => {
   return runWithRetry(async () => {
     const response = await ai.models.generateContent({
       model: IMAGE_MODEL,
@@ -120,7 +121,7 @@ export const editSlideImage = async (currentImageBase64: string, instruction: st
             }
           },
           {
-            text: `Maintain the flat vector corporate style. White background. ${instruction}`
+            text: `Edit this image based on the following instruction: "${instruction}". Maintain the requested visual style: ${style}. Ensure high quality.`
           }
         ]
       }
