@@ -16,6 +16,7 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Paperclip,
   X,
   MousePointer2,
@@ -37,7 +38,9 @@ import {
   AlignRight,
   RotateCcw,
   Type as TypeIcon,
-  Wand2
+  Wand2,
+  Brain,
+  FileText
 } from 'lucide-react';
 
 const INITIAL_PALETTE: Palette = {
@@ -68,7 +71,9 @@ const FONT_PAIRS: FontPair[] = [
 const App: React.FC = () => {
   // --- State ---
   const [topic, setTopic] = useState('');
-  const [imageStyle, setImageStyle] = useState('Corporate Vector'); 
+  const [contentMode, setContentMode] = useState<'generate' | 'literal'>('generate'); // New state for input mode
+  const [imageStyle, setImageStyle] = useState('Corporate Vector (Default)'); 
+  const [selectedFontPairName, setSelectedFontPairName] = useState(FONT_PAIRS[0].name); // New state for typography
   const [customStylePrompt, setCustomStylePrompt] = useState(''); 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [palette, setPalette] = useState<Palette>(INITIAL_PALETTE);
@@ -84,6 +89,7 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [chatInput, setChatInput] = useState('');
+  const [cursorPosition, setCursorPosition] = useState<number | null>(null); // Track cursor for chat input
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [showPalette, setShowPalette] = useState(true); 
   const [pendingImage, setPendingImage] = useState<string | null>(null);
@@ -97,6 +103,7 @@ const App: React.FC = () => {
   const slidesContainerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   // --- Helpers ---
 
@@ -174,13 +181,16 @@ const App: React.FC = () => {
   const performReset = () => {
     setSlides([]);
     setTopic('');
-    setImageStyle('Corporate Vector'); 
+    setContentMode('generate');
+    setImageStyle('Corporate Vector (Default)'); 
+    setSelectedFontPairName(FONT_PAIRS[0].name);
     setCustomStylePrompt('');
     setChatHistory([]);
     setSelectedSlideId(null);
     setSelectedElement(null);
     setPalette(INITIAL_PALETTE);
     setChatInput('');
+    setCursorPosition(null);
     setPendingImage(null);
     setIsGenerating(false);
     setIsSidebarOpen(true);
@@ -203,9 +213,10 @@ const App: React.FC = () => {
     setChatHistory([]);
 
     const effectiveStyle = getEffectiveStyle();
+    const selectedFontPair = FONT_PAIRS.find(f => f.name === selectedFontPairName) || FONT_PAIRS[0];
 
     try {
-      const rawSlides = await generateCarouselStructure(topic, effectiveStyle);
+      const rawSlides = await generateCarouselStructure(topic, effectiveStyle, contentMode);
       
       const newSlides: Slide[] = rawSlides.map((s, index) => ({
         ...s,
@@ -218,7 +229,7 @@ const App: React.FC = () => {
         contentPos: { x: 0, y: 0 },
         imagePos: { x: 0, y: 0 },
         textAlign: 'center',
-        fontPair: FONT_PAIRS[0] // Default font
+        fontPair: selectedFontPair // Use selected font pair
       }));
 
       setSlides(newSlides);
@@ -378,17 +389,20 @@ const App: React.FC = () => {
   const onEmojiClick = (emojiData: EmojiClickData) => {
     // Context Aware Emoji Insertion
     if (selectedSlideId && (selectedElement === 'title' || selectedElement === 'content')) {
-       // Insert into slide text
+       // Insert into slide text (Fallback to append, as contentEditable selection tracking is complex)
        const element = selectedElement as 'title' | 'content';
        setSlides(prev => prev.map(s => {
          if (s.id === selectedSlideId) {
-           return { ...s, [element]: s[element] + emojiData.emoji }; // Append emoji
+           return { ...s, [element]: s[element] + emojiData.emoji }; 
          }
          return s;
        }));
     } else {
-       // Insert into chat
-       setChatInput((prevInput) => prevInput + emojiData.emoji);
+       // Insert into chat at cursor position
+       const currentPos = cursorPosition ?? chatInput.length;
+       const newText = chatInput.slice(0, currentPos) + emojiData.emoji + chatInput.slice(currentPos);
+       setChatInput(newText);
+       setCursorPosition(currentPos + emojiData.emoji.length);
     }
     setShowEmojiPicker(false);
   };
@@ -402,6 +416,7 @@ const App: React.FC = () => {
     const effectiveStyle = getEffectiveStyle();
     
     setChatInput('');
+    setCursorPosition(null);
     setPendingImage(null);
     setShowEmojiPicker(false);
     setChatHistory(prev => [...prev, { role: 'user', text: userMsg, image: uploadedImage || undefined }]);
@@ -683,35 +698,76 @@ const App: React.FC = () => {
         {slides.length === 0 ? (
           <div className="flex-1 overflow-y-auto p-6 space-y-8 animate-in fade-in duration-300 min-w-[24rem]">
             <div className="space-y-4">
-              <label className="text-sm font-bold text-gray-800 block">Topic or Description</label>
+              
+              {/* CONTENT MODE TOGGLE WITH TOOLTIPS */}
+              <div className="flex items-center p-1 bg-gray-100 rounded-lg relative">
+                <div className="relative group/mode flex-1">
+                   <button 
+                    onClick={() => setContentMode('generate')}
+                    className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-md transition-all ${contentMode === 'generate' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    <Brain className="w-3.5 h-3.5" />
+                    AI Generation
+                  </button>
+                  {/* Tooltip */}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover/mode:opacity-100 pointer-events-none transition-opacity z-[100] text-center shadow-xl">
+                    Describe a topic and AI will create structure, copy, and images for you.
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-4 border-transparent border-b-gray-900"></div>
+                  </div>
+                </div>
+
+                <div className="relative group/mode flex-1">
+                  <button 
+                    onClick={() => setContentMode('literal')}
+                    className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-md transition-all ${contentMode === 'literal' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Literal Input
+                  </button>
+                  {/* Tooltip */}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover/mode:opacity-100 pointer-events-none transition-opacity z-[100] text-center shadow-xl">
+                    Paste your exact text. AI will format it but will NOT change your words.
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-4 border-transparent border-b-gray-900"></div>
+                  </div>
+                </div>
+              </div>
+
+              <label className="text-sm font-bold text-gray-800 block">
+                {contentMode === 'generate' ? 'Topic or Description' : 'Slide Content (Literal)'}
+              </label>
               <textarea
-                className="w-full p-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none h-32 transition-all text-sm leading-relaxed"
-                placeholder="e.g. 5 Tips for Remote Work Leadership..."
+                className={`w-full p-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:outline-none resize-none h-32 transition-all text-sm leading-relaxed ${contentMode === 'generate' ? 'focus:ring-blue-500' : 'focus:ring-purple-500'}`}
+                placeholder={contentMode === 'generate' ? "e.g. 5 Tips for Remote Work Leadership..." : "Slide 1: [Title] - [Content]\nSlide 2: [Title] - [Content]"}
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 disabled={isGenerating}
               />
+              {contentMode === 'literal' && (
+                <p className="text-xs text-purple-600 mt-1 flex items-center gap-1">
+                  <Info className="w-3 h-3" /> 
+                  AI will use your text exactly as typed.
+                </p>
+              )}
 
+              {/* CONSOLIDATED VISUAL STYLE SELECTOR */}
               <div className="space-y-2">
                 <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   <Paintbrush className="w-4 h-4 text-blue-600" />
                   Visual Style
                 </label>
+                
                 <div className="relative">
-                  <input
-                    type="text"
-                    list="style-suggestions"
-                    value={imageStyle}
+                  <select 
+                    value={imageStyle} 
                     onChange={(e) => setImageStyle(e.target.value)}
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                    placeholder="e.g. Hyper-realistic, 3D Render..."
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm appearance-none cursor-pointer"
                     disabled={isGenerating}
-                  />
-                  <datalist id="style-suggestions">
+                  >
                     {STYLE_PRESETS.map(style => (
-                      <option key={style} value={style} />
+                      <option key={style} value={style}>{style}</option>
                     ))}
-                  </datalist>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
                 
                 {imageStyle === 'Custom Style' && (
@@ -729,41 +785,42 @@ const App: React.FC = () => {
                     />
                   </div>
                 )}
+              </div>
 
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {STYLE_PRESETS.slice(0, 3).map((style) => (
-                    <button
-                      key={style}
-                      onClick={() => setImageStyle(style)}
-                      className={`text-xs px-2 py-1 rounded-md border transition-colors ${
-                        imageStyle === style 
-                        ? 'bg-blue-100 border-blue-200 text-blue-700' 
-                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {style.split(' ')[0]}
-                    </button>
-                  ))}
-                  <button
-                      onClick={() => setImageStyle("Custom Style")}
-                      className={`text-xs px-2 py-1 rounded-md border transition-colors ${
-                        imageStyle === "Custom Style" 
-                        ? 'bg-purple-100 border-purple-200 text-purple-700' 
-                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      Custom
-                  </button>
+              {/* NEW: TYPOGRAPHY SELECTOR */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                  <TypeIcon className="w-4 h-4 text-blue-600" />
+                  Typography Style
+                </label>
+                <div className="relative">
+                  <select 
+                    value={selectedFontPairName} 
+                    onChange={(e) => setSelectedFontPairName(e.target.value)}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm appearance-none cursor-pointer"
+                    disabled={isGenerating}
+                  >
+                    {FONT_PAIRS.map(font => (
+                      <option key={font.name} value={font.name}>
+                        {font.name} ({font.title.split(',')[0].replace(/'/g, '')} + {font.body.split(',')[0].replace(/'/g, '')})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
 
               <button
                 onClick={handleGenerate}
                 disabled={!topic.trim() || isGenerating || (imageStyle === 'Custom Style' && !customStylePrompt.trim())}
-                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl font-semibold transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2 mt-4"
+                className={`w-full py-3.5 text-white rounded-xl font-semibold transition-all shadow-lg flex items-center justify-center gap-2 mt-4 ${
+                  contentMode === 'generate' 
+                  ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' 
+                  : 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
-                Generate Carousel
+                {contentMode === 'generate' ? 'Generate Carousel' : 'Format Slides'}
               </button>
             </div>
 
@@ -996,9 +1053,13 @@ const App: React.FC = () => {
                   
                   <div className="relative flex-1">
                     <input
+                        ref={chatInputRef}
                         type="text"
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
+                        onSelect={(e) => setCursorPosition(e.currentTarget.selectionStart)}
+                        onClick={(e) => setCursorPosition(e.currentTarget.selectionStart)}
+                        onKeyUp={(e) => setCursorPosition(e.currentTarget.selectionStart)}
                         onPaste={handlePaste}
                         onFocus={() => {
                           if (!selectedElement) setShowEmojiPicker(false)

@@ -30,10 +30,39 @@ const runWithRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 4000):
   }
 };
 
-export const generateCarouselStructure = async (topic: string, style: string = 'Corporate Vector'): Promise<Omit<Slide, 'id' | 'imageBase64' | 'isGeneratingImage' | 'fontPair'>[]> => {
-  const response = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: `
+export const generateCarouselStructure = async (
+  topic: string, 
+  style: string = 'Corporate Vector',
+  mode: 'generate' | 'literal' = 'generate'
+): Promise<Omit<Slide, 'id' | 'imageBase64' | 'isGeneratingImage' | 'fontPair'>[]> => {
+  
+  let systemInstruction = "";
+
+  if (mode === 'literal') {
+    // LITERAL MODE PROMPT
+    systemInstruction = `
+    Actúa como un Formateador de Estructura JSON estricto.
+    INPUT USUARIO: "${topic}".
+    ESTILO VISUAL: "${style}".
+
+    OBJETIVO: Convertir el texto del usuario en un array JSON de slides, RESPETANDO EL TEXTO EXACTO.
+
+    REGLAS CRÍTICAS (MODO LITERAL):
+    1. **NO PARAFRASEAR**: Usa el texto del usuario *exactamente* como está escrito para 'title' y 'content'.
+    2. **NO INVENTAR**: No agregues información que no esté en el input.
+    3. **SEGMENTACIÓN**: Si el usuario escribe "Slide 1: ... Slide 2: ...", respeta esa división. Si es un bloque de texto, divídelo lógicamente pero sin cambiar las palabras.
+    4. **FORMATO**: Si el usuario usa **negritas** o [[botones]], mantenlos.
+
+    TU TRABAJO DE DISEÑO:
+    - Aunque el texto sea literal, DEBES elegir el 'layout' más adecuado para la cantidad de texto de cada slide.
+    - DEBES generar un 'imagePrompt' creativo basado en el texto del usuario y el estilo visual "${style}".
+    
+    ESTRUCTURA DE RESPUESTA (JSON Array):
+    Items: title, content, imagePrompt, layout.
+    `;
+  } else {
+    // GENERATE (CREATIVE) MODE PROMPT
+    systemInstruction = `
     Actúa como un Diseñador Visual Senior especializado en presentaciones de LinkedIn.
     INPUT USUARIO: "${topic}".
     ESTILO VISUAL SOLICITADO: "${style}".
@@ -65,7 +94,12 @@ export const generateCarouselStructure = async (topic: string, style: string = '
     - content: El texto secundario.
     - imagePrompt: "Simple description of subject. Style: ${style}".
     - layout: Selecciona uno variado ('text-image-text' | 'image-top' | 'image-bottom' | 'text-only').
-    `,
+    `;
+  }
+
+  const response = await ai.models.generateContent({
+    model: TEXT_MODEL,
+    contents: systemInstruction,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
