@@ -47,7 +47,10 @@ import {
   Save,
   CircleHelp,
   History,
-  Globe
+  Globe,
+  Heart,
+  UserPlus,
+  ExternalLink
 } from 'lucide-react';
 
 // --- OFFICIAL BRAND ICONS ---
@@ -76,6 +79,17 @@ const InstagramIcon = ({ className }: { className?: string }) => (
 );
 
 const STORAGE_KEY = 'carrousel_generator_state_v1';
+
+// --- CONFIGURATION FOR SOCIAL GROWTH ---
+// REPLACE THESE URLs WITH YOUR OWN PROFILES AND PINNED POSTS
+const SOCIAL_CONFIG = {
+  linkedinProfile: "https://www.linkedin.com/in/javierailbirt/", 
+  instagramProfile: "https://www.instagram.com/javier_ailbirt/",
+  // Post where you want them to comment (e.g. pinned post) - Using profile as placeholder for now
+  linkedinPost: "https://www.linkedin.com/in/javierailbirt/", 
+  // Leave empty to hide the Instagram Comment button until you have a specific post
+  instagramPost: "" 
+};
 
 // --- TRANSLATIONS CONFIGURATION (SEO OPTIMIZED) ---
 const UI_TEXT = {
@@ -135,7 +149,14 @@ const UI_TEXT = {
     resetConfirmTitle: "¿Crear nuevo carrusel?",
     resetConfirmText: "Esta acción borrará tu trabajo actual.",
     cancel: "Cancelar",
-    confirm: "Sí, Crear Nuevo"
+    confirm: "Sí, Crear Nuevo",
+    // Social Modal
+    growthTitle: "¡Tu Carrusel se está creando!",
+    growthSubtitle: "Mientras la IA trabaja, ¿me apoyas con un clic?",
+    actionFollow: "Sígueme para más",
+    actionComment: "Dejar un comentario",
+    actionSkip: "Volver a mi carrusel",
+    commentHint: "Se abrirá mi post destacado. ¡Dime qué opinas!"
   },
   en: {
     appTitle: "AI Carousel Generator",
@@ -193,7 +214,13 @@ const UI_TEXT = {
     resetConfirmTitle: "Create new carousel?",
     resetConfirmText: "This will delete current work.",
     cancel: "Cancel",
-    confirm: "Yes, Create New"
+    confirm: "Yes, Create New",
+    growthTitle: "Your Carousel is Cooking!",
+    growthSubtitle: "While AI works, support the creator?",
+    actionFollow: "Follow for updates",
+    actionComment: "Leave a comment",
+    actionSkip: "Back to my carousel",
+    commentHint: "This opens my pinned post. Let me know your thoughts!"
   },
   pt: {
     appTitle: "Gerador de Carrosséis IA",
@@ -251,7 +278,13 @@ const UI_TEXT = {
     resetConfirmTitle: "Novo Carrossel?",
     resetConfirmText: "Isso excluirá seu trabalho atual.",
     cancel: "Cancelar",
-    confirm: "Sim, Criar Novo"
+    confirm: "Sim, Criar Novo",
+    growthTitle: "Seu Carrossel está Chegando!",
+    growthSubtitle: "Enquanto a IA trabalha, pode me apoiar?",
+    actionFollow: "Seguir para mais",
+    actionComment: "Deixar um comentário",
+    actionSkip: "Voltar ao carrossel",
+    commentHint: "Isso abre meu post fixado. Diz o que achou!"
   }
 };
 
@@ -486,7 +519,7 @@ const HelpTooltip: React.FC<{ index: number; title?: string; content?: string }>
 const App: React.FC = () => {
   // --- State (Initialized with LocalStorage) ---
   const [language, setLanguage] = useState<Language>(() => getSavedState<Language>('language', 'es'));
-  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false); // New state for click-based menu
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false); 
 
   const [topic, setTopic] = useState(() => getSavedState<string>('topic', ''));
   const [contentMode, setContentMode] = useState<'generate' | 'literal'>(() => getSavedState<'generate' | 'literal'>('contentMode', 'generate'));
@@ -524,6 +557,7 @@ const App: React.FC = () => {
   const [showInlineEmojiPicker, setShowInlineEmojiPicker] = useState(false);
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showGrowthModal, setShowGrowthModal] = useState(false); // New Growth Modal State
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
@@ -683,6 +717,7 @@ const App: React.FC = () => {
     setIsSidebarOpen(true);
     setShowResetConfirm(false);
     setLastFocusedCursorIndex(0);
+    setShowGrowthModal(false);
     
     const tempShowTour = showTour;
     const tempLanguage = language;
@@ -713,6 +748,7 @@ const App: React.FC = () => {
     setSelectedSlideId(null);
     setSelectedElement(null);
     setChatHistory([]);
+    setShowGrowthModal(false);
 
     const effectiveStyle = getEffectiveStyle();
     let selectedFontPair: FontPair;
@@ -742,6 +778,10 @@ const App: React.FC = () => {
 
       setSlides(newSlides);
       if (newSlides.length > 0) setSelectedSlideId(newSlides[0].id);
+
+      // --- TRIGGER GROWTH MODAL HERE ---
+      // Show modal after structure is done, while images generate
+      setTimeout(() => setShowGrowthModal(true), 1500);
 
       setLoadingMessage(t('loadingImages'));
       generateImagesForSlides(newSlides, effectiveStyle);
@@ -1108,6 +1148,99 @@ const App: React.FC = () => {
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
       
       {/* --- MODALS --- */}
+      
+      {/* GROWTH MODAL - ASKS FOR FOLLOW/COMMENT */}
+      {showGrowthModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+           <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-in zoom-in-95 duration-300 relative border-4 border-blue-50">
+             {/* Close Button */}
+             <button 
+               onClick={() => setShowGrowthModal(false)}
+               className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 text-gray-400 transition-colors"
+             >
+               <X className="w-5 h-5" />
+             </button>
+
+             <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-tr from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce shadow-inner">
+                   <Sparkles className="w-8 h-8 text-blue-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('growthTitle')}</h3>
+                <p className="text-gray-500 font-medium">{t('growthSubtitle')}</p>
+             </div>
+
+             <div className="grid grid-cols-2 gap-4 mb-6">
+                {/* Follow Section */}
+                <div className="flex flex-col gap-2">
+                   <a 
+                     href={SOCIAL_CONFIG.linkedinProfile} 
+                     target="_blank" 
+                     rel="noopener noreferrer"
+                     className="flex items-center justify-center gap-2 p-3 bg-[#0077B5] text-white rounded-xl font-bold text-sm hover:bg-[#006396] transition-transform hover:scale-105 shadow-md shadow-blue-200"
+                   >
+                      <LinkedInIcon className="w-5 h-5" /> LinkedIn
+                   </a>
+                   <a 
+                     href={SOCIAL_CONFIG.instagramProfile} 
+                     target="_blank" 
+                     rel="noopener noreferrer"
+                     className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold text-sm hover:opacity-90 transition-transform hover:scale-105 shadow-md shadow-pink-200"
+                   >
+                      <InstagramIcon className="w-5 h-5" /> Instagram
+                   </a>
+                   <p className="text-[10px] text-center text-gray-400 font-bold uppercase tracking-wider mt-1">{t('actionFollow')}</p>
+                </div>
+
+                {/* Comment Section */}
+                <div className="flex flex-col gap-2">
+                   {SOCIAL_CONFIG.linkedinPost && (
+                     <a 
+                       href={SOCIAL_CONFIG.linkedinPost} 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       className="flex-1 flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all group"
+                     >
+                        <MessageSquare className="w-6 h-6 text-gray-400 group-hover:text-blue-500" />
+                        <span className="text-xs font-bold leading-tight text-center">{t('actionComment')}</span>
+                     </a>
+                   )}
+                   
+                   {/* Conditional Instagram Post Button - Hidden if empty string */}
+                   {SOCIAL_CONFIG.instagramPost && (
+                     <a 
+                       href={SOCIAL_CONFIG.instagramPost} 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       className="flex-1 flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-pink-400 hover:text-pink-600 hover:bg-pink-50 transition-all group"
+                     >
+                        <Heart className="w-6 h-6 text-gray-400 group-hover:text-pink-500" />
+                        <span className="text-xs font-bold leading-tight text-center">{t('actionComment')}</span>
+                     </a>
+                   )}
+                   
+                   <p className="text-[10px] text-center text-gray-400 font-bold uppercase tracking-wider mt-1">
+                      {SOCIAL_CONFIG.instagramPost ? "Posts Destacados" : "LinkedIn Post"}
+                   </p>
+                </div>
+             </div>
+
+             <div className="bg-blue-50 p-3 rounded-lg flex items-start gap-3 mb-6">
+                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-800 leading-relaxed">
+                  {t('commentHint')}
+                </p>
+             </div>
+
+             <button 
+               onClick={() => setShowGrowthModal(false)}
+               className="w-full py-3 text-gray-500 font-semibold hover:text-gray-900 transition-colors text-sm"
+             >
+               {t('actionSkip')}
+             </button>
+           </div>
+        </div>
+      )}
+
       {showResetConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
