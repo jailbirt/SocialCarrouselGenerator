@@ -16,6 +16,26 @@ interface SlideViewProps {
   isExport?: boolean; 
   scale?: number;
   id?: string;
+  onCursorChange?: (index: number) => void;
+}
+
+// Helper to get caret offset relative to text content
+function getCaretCharacterOffsetWithin(element: HTMLElement) {
+    let caretOffset = 0;
+    const doc = element.ownerDocument || document;
+    const win = doc.defaultView || window;
+    let sel;
+    if (typeof win.getSelection != "undefined") {
+        sel = win.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            const preCaretRange = range.cloneRange();
+            preCaretRange.selectNodeContents(element);
+            preCaretRange.setEnd(range.endContainer, range.endOffset);
+            caretOffset = preCaretRange.toString().length;
+        }
+    }
+    return caretOffset;
 }
 
 export const SlideView: React.FC<SlideViewProps> = ({ 
@@ -31,7 +51,8 @@ export const SlideView: React.FC<SlideViewProps> = ({
   isEditable = false,
   isExport = false,
   scale = 1,
-  id
+  id,
+  onCursorChange
 }) => {
   // 1080 x 1350 is the target.
   const width = 1080;
@@ -44,7 +65,38 @@ export const SlideView: React.FC<SlideViewProps> = ({
     if (onElementSelect) {
       onElementSelect(element);
     }
+    
+    // Attempt to track cursor if clicked
+    if (onCursorChange && e.target instanceof HTMLElement) {
+       // Using small timeout to allow selection to update
+       setTimeout(() => {
+         const pos = getCaretCharacterOffsetWithin(e.target as HTMLElement);
+         onCursorChange(pos);
+       }, 0);
+    }
   };
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+      if (onCursorChange && e.target instanceof HTMLElement) {
+         const pos = getCaretCharacterOffsetWithin(e.target as HTMLElement);
+         onCursorChange(pos);
+      }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLElement>) => {
+      // Save final cursor position on blur
+      if (onCursorChange) {
+         const pos = getCaretCharacterOffsetWithin(e.target);
+         onCursorChange(pos);
+      }
+      // Trigger update
+      if (e.target.dataset.type === 'title') {
+         onTitleChange?.(e.target.innerText);
+      } else if (e.target.dataset.type === 'content') {
+         onContentChange?.(e.target.innerText);
+      }
+  };
+
 
   // Helper to render text with highlighting
   const renderRichText = (text: string, isTitle: boolean = false) => {
@@ -208,22 +260,38 @@ export const SlideView: React.FC<SlideViewProps> = ({
           <div className={`flex-1 flex flex-col justify-center p-20 gap-16 ${alignClass}`}>
              <div className="w-full relative z-20" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
+                  data-type="title"
                   className={titleClass}
                   style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
-                  onBlur={(e) => onTitleChange?.(e.currentTarget.innerText)}
+                  onBlur={handleBlur}
+                  onKeyUp={handleKeyUp}
+                  onClick={(e) => {
+                     if (onCursorChange) {
+                        const pos = getCaretCharacterOffsetWithin(e.currentTarget);
+                        onCursorChange(pos);
+                     }
+                  }}
                 >
                   {showRawTitle ? slide.title : renderRichText(slide.title, true)}
                 </h2>
              </div>
              <div className="w-full max-w-4xl relative z-20" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
+                  data-type="content"
                   className={contentClass}
                   style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
-                  onBlur={(e) => onContentChange?.(e.currentTarget.innerText)}
+                  onBlur={handleBlur}
+                  onKeyUp={handleKeyUp}
+                  onClick={(e) => {
+                     if (onCursorChange) {
+                        const pos = getCaretCharacterOffsetWithin(e.currentTarget);
+                        onCursorChange(pos);
+                     }
+                  }}
                 >
                   {showRawContent ? slide.content : renderRichText(slide.content)}
                 </div>
@@ -236,11 +304,19 @@ export const SlideView: React.FC<SlideViewProps> = ({
             <div className="flex-1 flex flex-col h-full p-16 gap-6">
               <div className={`flex-none pt-4 flex justify-center relative z-20 ${alignClass}`} style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
+                  data-type="title"
                   className={`text-7xl font-bold ${leadingClass} outline-none whitespace-pre-line max-w-4xl py-2`}
                   style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
-                  onBlur={(e) => onTitleChange?.(e.currentTarget.innerText)}
+                  onBlur={handleBlur}
+                  onKeyUp={handleKeyUp}
+                  onClick={(e) => {
+                     if (onCursorChange) {
+                        const pos = getCaretCharacterOffsetWithin(e.currentTarget);
+                        onCursorChange(pos);
+                     }
+                  }}
                 >
                   {showRawTitle ? slide.title : renderRichText(slide.title, true)}
                 </h2>
@@ -255,11 +331,19 @@ export const SlideView: React.FC<SlideViewProps> = ({
 
               <div className={`flex-none pb-8 flex justify-center relative z-20 ${alignClass}`} style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
+                  data-type="content"
                   className={`text-5xl leading-normal font-medium outline-none whitespace-pre-line max-w-3xl py-2`}
                   style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
-                  onBlur={(e) => onContentChange?.(e.currentTarget.innerText)}
+                  onBlur={handleBlur}
+                  onKeyUp={handleKeyUp}
+                  onClick={(e) => {
+                     if (onCursorChange) {
+                        const pos = getCaretCharacterOffsetWithin(e.currentTarget);
+                        onCursorChange(pos);
+                     }
+                  }}
                 >
                   {showRawContent ? slide.content : renderRichText(slide.content)}
                 </div>
@@ -280,22 +364,38 @@ export const SlideView: React.FC<SlideViewProps> = ({
             <div className={`h-[62%] w-full p-16 flex flex-col gap-10 justify-start relative z-20 ${flexAlignClass} ${alignClass}`}>
               <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
+                  data-type="title"
                   className={`text-8xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
                   style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
-                  onBlur={(e) => onTitleChange?.(e.currentTarget.innerText)}
+                  onBlur={handleBlur}
+                  onKeyUp={handleKeyUp}
+                  onClick={(e) => {
+                     if (onCursorChange) {
+                        const pos = getCaretCharacterOffsetWithin(e.currentTarget);
+                        onCursorChange(pos);
+                     }
+                  }}
                 >
                   {showRawTitle ? slide.title : renderRichText(slide.title, true)}
                 </h2>
               </div>
               <div className="w-full max-w-3xl" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
+                  data-type="content"
                   className={`text-6xl leading-normal font-medium outline-none whitespace-pre-line py-2`}
                   style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
-                  onBlur={(e) => onContentChange?.(e.currentTarget.innerText)}
+                  onBlur={handleBlur}
+                  onKeyUp={handleKeyUp}
+                  onClick={(e) => {
+                     if (onCursorChange) {
+                        const pos = getCaretCharacterOffsetWithin(e.currentTarget);
+                        onCursorChange(pos);
+                     }
+                  }}
                 >
                   {showRawContent ? slide.content : renderRichText(slide.content)}
                 </div>
@@ -312,22 +412,38 @@ export const SlideView: React.FC<SlideViewProps> = ({
             <div className={`h-[62%] w-full p-16 flex flex-col gap-10 justify-end relative z-20 ${flexAlignClass} ${alignClass}`}>
               <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
+                  data-type="title"
                   className={`text-8xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
                   style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
-                  onBlur={(e) => onTitleChange?.(e.currentTarget.innerText)}
+                  onBlur={handleBlur}
+                  onKeyUp={handleKeyUp}
+                  onClick={(e) => {
+                     if (onCursorChange) {
+                        const pos = getCaretCharacterOffsetWithin(e.currentTarget);
+                        onCursorChange(pos);
+                     }
+                  }}
                 >
                   {showRawTitle ? slide.title : renderRichText(slide.title, true)}
                 </h2>
               </div>
               <div className="w-full max-w-3xl" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
+                  data-type="content"
                   className={`text-6xl leading-normal font-medium outline-none whitespace-pre-line py-2`}
                   style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
-                  onBlur={(e) => onContentChange?.(e.currentTarget.innerText)}
+                  onBlur={handleBlur}
+                  onKeyUp={handleKeyUp}
+                  onClick={(e) => {
+                     if (onCursorChange) {
+                        const pos = getCaretCharacterOffsetWithin(e.currentTarget);
+                        onCursorChange(pos);
+                     }
+                  }}
                 >
                   {showRawContent ? slide.content : renderRichText(slide.content)}
                 </div>

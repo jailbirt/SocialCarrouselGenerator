@@ -128,7 +128,12 @@ const TOUR_DATA = [
   { title: "Step 4: Color Palette", content: "Pick brand colors. Use presets or define your own." },
   { title: "Step 5: Generate", content: "Click to build! Don't worry, you can edit content and images after generation." },
   { title: "Interactive Preview", content: "Click any text or image on the slide to select it for editing." },
-  { title: "AI Assistant", content: "Type here to rewrite selected text or regenerate images instantly." }
+  { title: "AI Assistant", content: "Type here to rewrite selected text or regenerate images instantly." },
+  // Additional Data for Edit Mode Tooltips
+  { title: "Font Pairing", content: "Change the fonts for the current slide." },
+  { title: "AI Rewrite", content: "Use AI to paraphrase or improve the selected text." },
+  { title: "Insert Emoji", content: "Add an emoji at your current cursor position." },
+  { title: "Element Tuning", content: "Adjust position and scale of the selected element." }
 ];
 
 // --- Local Storage Helper ---
@@ -206,15 +211,15 @@ const TourPopover: React.FC<TourPopoverProps> = ({ step, totalSteps, title, cont
   );
 };
 
-// --- NEW: HelpTooltip Component ---
+// --- HelpTooltip Component ---
 const HelpTooltip: React.FC<{ index: number }> = ({ index }) => {
   const data = TOUR_DATA[index];
   if (!data) return null;
 
   return (
     <div className="group relative inline-block ml-1.5 align-middle">
-      <CircleHelp className="w-3.5 h-3.5 text-blue-200 hover:text-blue-500 cursor-help transition-colors" />
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-white border border-blue-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] text-left">
+      <CircleHelp className="w-3.5 h-3.5 text-blue-300 hover:text-blue-500 cursor-help transition-colors" />
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-white border border-blue-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] text-left pointer-events-none">
          <h4 className="font-bold text-gray-800 text-xs mb-1">{data.title}</h4>
          <p className="text-[10px] text-gray-500 leading-relaxed">{data.content}</p>
          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-white drop-shadow-sm"></div>
@@ -251,6 +256,7 @@ const App: React.FC = () => {
   // Selection State
   const [selectedSlideId, setSelectedSlideId] = useState<string | null>(null);
   const [selectedElement, setSelectedElement] = useState<SlideElement>(null);
+  const [lastFocusedCursorIndex, setLastFocusedCursorIndex] = useState<number>(0);
   
   // Generation & Chat State
   const [isGenerating, setIsGenerating] = useState(false);
@@ -275,11 +281,17 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
-  // --- Persistence Effect ---
+  // --- Persistence Effect (FIXED: Strip Images) ---
   useEffect(() => {
     const saveState = () => {
       setSaveStatus('saving');
       try {
+        // Create a lightweight version of slides without images for storage
+        const sanitizedSlides = slides.map(s => ({
+            ...s,
+            imageBase64: null // DO NOT SAVE IMAGES
+        }));
+
         const stateToSave = {
           topic,
           contentMode,
@@ -290,22 +302,22 @@ const App: React.FC = () => {
           palettePresetName,
           palette,
           customStylePrompt,
-          slides, // Note: Saving large base64 images might hit storage limits
+          slides: sanitizedSlides, 
           showTour,
           currentTourStep
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
         setSaveStatus('saved');
       } catch (e: any) {
-        console.error("Storage limit reached or error", e);
+        console.error("Storage error", e);
         if (e.name === 'QuotaExceededError') {
-           setErrorMessage("Storage full. Some images might not be saved locally. Try clearing browser data.");
+           setErrorMessage("Local storage quota exceeded. Settings saved, but large data might be lost.");
         }
         setSaveStatus('error');
       }
     };
 
-    const timeoutId = setTimeout(saveState, 1000); // Debounce save by 1s
+    const timeoutId = setTimeout(saveState, 1500); // Debounce save
     return () => clearTimeout(timeoutId);
 
   }, [topic, contentMode, imageStyle, selectedFontPairName, customTitleFont, customBodyFont, palettePresetName, palette, customStylePrompt, slides, showTour, currentTourStep]);
@@ -337,6 +349,13 @@ const App: React.FC = () => {
       setIsSidebarOpen(true);
     }
   }, [showTour, currentTourStep]);
+
+  // Ensure tour triggers if enabled and at start
+  useEffect(() => {
+      if (showTour && currentTourStep === 0 && slides.length === 0) {
+          // Just ensuring UI reflects state
+      }
+  }, []);
 
   // --- Helpers ---
 
@@ -430,11 +449,12 @@ const App: React.FC = () => {
     setIsGenerating(false);
     setIsSidebarOpen(true);
     setShowResetConfirm(false);
+    setLastFocusedCursorIndex(0);
     
-    // Explicitly clear storage for a fresh start, but KEEP tour state if user wants it
+    // Clear storage but respect user's tour preference
     const tempShowTour = showTour;
     localStorage.removeItem(STORAGE_KEY);
-    // Start tour from scratch if active
+    
     setCurrentTourStep(0); 
     if (tempShowTour) setShowTour(true); 
   };
@@ -698,9 +718,15 @@ const App: React.FC = () => {
       const elementKey = selectedElement === 'title' ? 'title' : 'content';
       if (elementKey !== 'title' && elementKey !== 'content') return;
       
-      // Simply append for now as we don't track detailed cursor in contentEditable via state
-      const newText = (slide[elementKey] || '') + emojiData.emoji;
+      // INSERT AT LAST KNOWN CURSOR POSITION
+      const currentText = slide[elementKey] || '';
+      const insertAt = Math.min(lastFocusedCursorIndex, currentText.length);
+      
+      const newText = currentText.slice(0, insertAt) + emojiData.emoji + currentText.slice(insertAt);
+      
       setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, [elementKey]: newText } : s));
+      // Advance cursor
+      setLastFocusedCursorIndex(insertAt + emojiData.emoji.length);
       setShowInlineEmojiPicker(false);
   };
 
@@ -1343,6 +1369,7 @@ const App: React.FC = () => {
                   <h3 className="text-xs font-bold text-gray-800 flex items-center gap-2 uppercase tracking-wide">
                     {selectedElement ? <Move className="w-3 h-3 text-blue-600" /> : <TypeIcon className="w-3 h-3 text-blue-600" />}
                     {selectedElement ? "Element Tuning" : "Slide Typography"}
+                    <HelpTooltip index={10} />
                   </h3>
                   {selectedElement && (
                     <button 
@@ -1358,7 +1385,10 @@ const App: React.FC = () => {
                 {/* Typography Selector (Show if no element selected OR text selected) */}
                 {(!selectedElement) && (
                   <div className="mb-4">
-                     <label className="text-xs font-semibold text-gray-600 mb-1 block">Font Pairing</label>
+                     <label className="text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
+                        Font Pairing
+                        <HelpTooltip index={7} />
+                     </label>
                      <div className="grid grid-cols-2 gap-2">
                        {FONT_PAIRS.map(font => (
                          <button
@@ -1380,23 +1410,33 @@ const App: React.FC = () => {
                 {/* Text Editing Tools (Paraphrase & Inline Emoji for Text) */}
                 {(selectedElement === 'title' || selectedElement === 'content') && (
                    <div className="grid grid-cols-2 gap-2 mb-3">
-                      <button
-                        onClick={() => handleParaphrase(currentSlide.id, selectedElement)}
-                        disabled={isGenerating}
-                        className="flex items-center justify-center gap-2 p-2.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold hover:bg-purple-100 border border-purple-100 transition-colors"
-                      >
-                         <Wand2 className="w-3.5 h-3.5" /> 
-                         AI Rewrite
-                      </button>
-                      
-                      <div className="relative">
+                      <div className="relative flex-1 group/tooltip-wrapper">
                         <button
-                          onClick={() => setShowInlineEmojiPicker(!showInlineEmojiPicker)}
-                          className="w-full flex items-center justify-center gap-2 p-2.5 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-semibold hover:bg-yellow-100 border border-yellow-100 transition-colors"
+                          onClick={() => handleParaphrase(currentSlide.id, selectedElement)}
+                          disabled={isGenerating}
+                          className="w-full flex items-center justify-center gap-2 p-2.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold hover:bg-purple-100 border border-purple-100 transition-colors"
                         >
-                           <Smile className="w-3.5 h-3.5" /> 
-                           Insert Emoji
+                           <Wand2 className="w-3.5 h-3.5" /> 
+                           AI Rewrite
                         </button>
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto">
+                           <HelpTooltip index={8} />
+                        </div>
+                      </div>
+                      
+                      <div className="relative flex-1">
+                        <div className="relative w-full group/tooltip-wrapper">
+                          <button
+                            onClick={() => setShowInlineEmojiPicker(!showInlineEmojiPicker)}
+                            className="w-full flex items-center justify-center gap-2 p-2.5 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-semibold hover:bg-yellow-100 border border-yellow-100 transition-colors"
+                          >
+                             <Smile className="w-3.5 h-3.5" /> 
+                             Insert Emoji
+                          </button>
+                           <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto">
+                              <HelpTooltip index={9} />
+                           </div>
+                        </div>
                         
                         {showInlineEmojiPicker && (
                           <div className="absolute top-full right-0 mt-2 z-50 shadow-2xl rounded-xl">
@@ -1709,6 +1749,7 @@ const App: React.FC = () => {
                     onContentChange={(newContent) => handleSlideContentUpdate(slide.id, newContent)}
                     isEditable={true}
                     scale={0.36} 
+                    onCursorChange={setLastFocusedCursorIndex}
                   />
                   {/* Hidden Render for PDF */}
                   <div className="absolute top-0 -left-[9999px] -z-50 pointer-events-none">
