@@ -42,8 +42,11 @@ import {
   Brain,
   FileText,
   HelpCircle,
-  Check
+  Check,
+  Save
 } from 'lucide-react';
+
+const STORAGE_KEY = 'carrousel_generator_state_v1';
 
 const INITIAL_PALETTE: Palette = {
   background: '#1a1a1a', // Dark background by default to show off the feature
@@ -84,28 +87,46 @@ const FONT_PAIRS: FontPair[] = [
 const PALETTE_PRESETS = [
   { name: 'Dark Modern (Default)', palette: { background: '#1a1a1a', text: '#ffffff', accent: '#3b82f6' } },
   { name: 'Clean Light', palette: { background: '#ffffff', text: '#1a1a1a', accent: '#2563eb' } },
-  { name: 'Midnight', palette: { background: '#0f172a', text: '#f8fafc', accent: '#8b5cf6' } },
-  { name: 'Nature', palette: { background: '#052e16', text: '#f0fdf4', accent: '#4ade80' } },
-  { name: 'Warm Paper', palette: { background: '#fffbeb', text: '#451a03', accent: '#d97706' } },
-  { name: 'Luxury', palette: { background: '#000000', text: '#e2e8f0', accent: '#fbbf24' } },
+  { name: 'Deep Blue & Orange', palette: { background: '#0f172a', text: '#ffffff', accent: '#f97316' } },
+  { name: 'Clean Blue & Orange', palette: { background: '#ffffff', text: '#0f172a', accent: '#ea580c' } },
+  { name: 'Regal Purple & Gold', palette: { background: '#4c1d95', text: '#faf5ff', accent: '#fbbf24' } },
+  { name: 'Charcoal & Neon Green', palette: { background: '#1f2937', text: '#f9fafb', accent: '#4ade80' } },
+  { name: 'Fresh Teal & Coral', palette: { background: '#134e4a', text: '#f0fdfa', accent: '#fb7185' } },
+  { name: 'Warm Paper & Brown', palette: { background: '#fffbeb', text: '#451a03', accent: '#d97706' } },
+  { name: 'Luxury Black & Gold', palette: { background: '#000000', text: '#e2e8f0', accent: '#fbbf24' } },
   { name: 'Custom Palette', palette: null }
 ];
 
+// --- Local Storage Helper ---
+const getSavedState = <T,>(key: string, defaultValue: T): T => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return defaultValue;
+    const parsed = JSON.parse(saved);
+    return parsed[key] !== undefined ? parsed[key] : defaultValue;
+  } catch (e) {
+    console.warn("Failed to load state", e);
+    return defaultValue;
+  }
+};
+
 const App: React.FC = () => {
-  // --- State ---
-  const [topic, setTopic] = useState('');
-  const [contentMode, setContentMode] = useState<'generate' | 'literal'>('generate'); // New state for input mode
-  const [imageStyle, setImageStyle] = useState('Corporate Vector (Default)'); 
-  const [selectedFontPairName, setSelectedFontPairName] = useState(FONT_PAIRS[0].name); 
-  const [customTitleFont, setCustomTitleFont] = useState(AVAILABLE_FONTS[7].value); // Space Grotesk
-  const [customBodyFont, setCustomBodyFont] = useState(AVAILABLE_FONTS[0].value); // Inter
+  // --- State (Initialized with LocalStorage) ---
+  const [topic, setTopic] = useState(() => getSavedState<string>('topic', ''));
+  const [contentMode, setContentMode] = useState<'generate' | 'literal'>(() => getSavedState<'generate' | 'literal'>('contentMode', 'generate'));
+  const [imageStyle, setImageStyle] = useState(() => getSavedState<string>('imageStyle', 'Corporate Vector (Default)')); 
   
-  const [palettePresetName, setPalettePresetName] = useState(PALETTE_PRESETS[0].name);
-  const [isPaletteDropdownOpen, setIsPaletteDropdownOpen] = useState(false); // Custom dropdown state
+  const [selectedFontPairName, setSelectedFontPairName] = useState(() => getSavedState<string>('selectedFontPairName', FONT_PAIRS[0].name)); 
+  const [customTitleFont, setCustomTitleFont] = useState(() => getSavedState<string>('customTitleFont', AVAILABLE_FONTS[7].value));
+  const [customBodyFont, setCustomBodyFont] = useState(() => getSavedState<string>('customBodyFont', AVAILABLE_FONTS[0].value));
   
-  const [customStylePrompt, setCustomStylePrompt] = useState(''); 
-  const [slides, setSlides] = useState<Slide[]>([]);
-  const [palette, setPalette] = useState<Palette>(INITIAL_PALETTE);
+  const [palettePresetName, setPalettePresetName] = useState(() => getSavedState<string>('palettePresetName', PALETTE_PRESETS[0].name));
+  const [palette, setPalette] = useState<Palette>(() => getSavedState<Palette>('palette', INITIAL_PALETTE));
+  
+  const [customStylePrompt, setCustomStylePrompt] = useState(() => getSavedState<string>('customStylePrompt', '')); 
+  const [slides, setSlides] = useState<Slide[]>(() => getSavedState<Slide[]>('slides', []));
+  
+  const [isPaletteDropdownOpen, setIsPaletteDropdownOpen] = useState(false);
   
   // Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -118,7 +139,7 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [chatInput, setChatInput] = useState('');
-  const [cursorPosition, setCursorPosition] = useState<number | null>(null); // Track cursor for chat input
+  const [cursorPosition, setCursorPosition] = useState<number | null>(null); 
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false); 
@@ -126,12 +147,46 @@ const App: React.FC = () => {
   // UI Modals State
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
   // Refs
   const slidesContainerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Persistence Effect ---
+  useEffect(() => {
+    const saveState = () => {
+      setSaveStatus('saving');
+      try {
+        const stateToSave = {
+          topic,
+          contentMode,
+          imageStyle,
+          selectedFontPairName,
+          customTitleFont,
+          customBodyFont,
+          palettePresetName,
+          palette,
+          customStylePrompt,
+          slides // Note: Saving large base64 images might hit storage limits
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+        setSaveStatus('saved');
+      } catch (e: any) {
+        console.error("Storage limit reached or error", e);
+        if (e.name === 'QuotaExceededError') {
+           setErrorMessage("Storage full. Some images might not be saved locally. Try clearing browser data.");
+        }
+        setSaveStatus('error');
+      }
+    };
+
+    const timeoutId = setTimeout(saveState, 1000); // Debounce save by 1s
+    return () => clearTimeout(timeoutId);
+
+  }, [topic, contentMode, imageStyle, selectedFontPairName, customTitleFont, customBodyFont, palettePresetName, palette, customStylePrompt, slides]);
 
   // --- Helpers ---
 
@@ -225,6 +280,9 @@ const App: React.FC = () => {
     setIsGenerating(false);
     setIsSidebarOpen(true);
     setShowResetConfirm(false);
+    
+    // Explicitly clear storage for a fresh start
+    localStorage.removeItem(STORAGE_KEY);
   };
 
   const handlePalettePresetChange = (presetName: string) => {
@@ -758,6 +816,13 @@ const App: React.FC = () => {
             <Sparkles className="text-blue-600 w-5 h-5" />
             CarrouselGenerator
           </h1>
+          {/* Save Status Indicator */}
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded text-[10px] font-medium text-gray-500" title="Your settings are saved automatically">
+             {saveStatus === 'saving' && <Loader2 className="w-3 h-3 animate-spin" />}
+             {saveStatus === 'saved' && <Check className="w-3 h-3 text-green-500" />}
+             {saveStatus === 'error' && <AlertCircle className="w-3 h-3 text-red-500" />}
+             {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Error'}
+          </div>
         </div>
 
         {slides.length === 0 ? (
