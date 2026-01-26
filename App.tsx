@@ -160,39 +160,47 @@ const PortalTooltip: React.FC<{
 }> = ({ anchorRef, children, position = 'top', offset = 8, className = '' }) => {
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
 
+  const updatePosition = () => {
+    if (!anchorRef.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    
+    // Safety check: if element is hidden or not rendered, don't show
+    if (rect.width === 0 && rect.height === 0) return;
+
+    let top = 0;
+    let left = 0;
+
+    // Basic positioning logic relative to viewport
+    switch (position) {
+      case 'top':
+        top = rect.top - offset;
+        left = rect.left + rect.width / 2;
+        break;
+      case 'bottom':
+        top = rect.bottom + offset;
+        left = rect.left + rect.width / 2;
+        break;
+      case 'right':
+        top = rect.top + rect.height / 2;
+        left = rect.right + offset;
+        break;
+      case 'left':
+        top = rect.top + rect.height / 2;
+        left = rect.left - offset;
+        break;
+    }
+    setCoords({ top, left });
+  };
+
   useLayoutEffect(() => {
-    const updatePosition = () => {
-      if (!anchorRef.current) return;
-      const rect = anchorRef.current.getBoundingClientRect();
-      let top = 0;
-      let left = 0;
-
-      // Basic positioning logic relative to viewport
-      switch (position) {
-        case 'top':
-          top = rect.top - offset;
-          left = rect.left + rect.width / 2;
-          break;
-        case 'bottom':
-          top = rect.bottom + offset;
-          left = rect.left + rect.width / 2;
-          break;
-        case 'right':
-          top = rect.top + rect.height / 2;
-          left = rect.right + offset;
-          break;
-        case 'left':
-          top = rect.top + rect.height / 2;
-          left = rect.left - offset;
-          break;
-      }
-      setCoords({ top, left });
-    };
-
-    updatePosition();
+    // Initial calculation with a small delay to ensure DOM paint
+    const rAF = requestAnimationFrame(updatePosition);
+    
     window.addEventListener('scroll', updatePosition, true);
     window.addEventListener('resize', updatePosition);
+    
     return () => {
+      cancelAnimationFrame(rAF);
       window.removeEventListener('scroll', updatePosition, true);
       window.removeEventListener('resize', updatePosition);
     };
@@ -202,7 +210,7 @@ const PortalTooltip: React.FC<{
 
   return createPortal(
     <div
-      className={`fixed z-[9999] ${className}`}
+      className={`fixed z-[99999] ${className}`}
       style={{
         top: coords.top,
         left: coords.left,
@@ -235,40 +243,40 @@ interface TourPopoverProps {
 
 const TourPopover: React.FC<TourPopoverProps> = ({ step, totalSteps, title, content, onNext, onPrev, onSkip, position = 'right', anchorRef }) => {
   return (
-    <PortalTooltip anchorRef={anchorRef} position={position} offset={12} className="pointer-events-auto">
-       <div className="w-64 bg-white rounded-xl shadow-2xl border border-blue-100 p-4 animate-in zoom-in-95 duration-200 relative">
+    <PortalTooltip anchorRef={anchorRef} position={position} offset={15} className="pointer-events-auto filter drop-shadow-2xl">
+       <div className="w-72 bg-white rounded-xl border border-blue-200 p-5 animate-in zoom-in-95 duration-200 relative shadow-2xl">
           {/* Visual Arrow (Approximation using absolute div inside the popover) */}
-          <div className={`absolute w-3 h-3 bg-white border-l border-b border-blue-100 transform rotate-45 
-            ${position === 'right' ? '-left-1.5 top-1/2 -translate-y-1/2' : 
-              position === 'left' ? '-right-1.5 top-1/2 -translate-y-1/2 rotate-[225deg]' :
-              position === 'bottom' ? '-top-1.5 left-1/2 -translate-x-1/2 rotate-[135deg]' :
-              '-bottom-1.5 left-1/2 -translate-x-1/2 rotate-[-45deg]'
+          <div className={`absolute w-4 h-4 bg-white border-l border-b border-blue-200 transform rotate-45 
+            ${position === 'right' ? '-left-2 top-1/2 -translate-y-1/2' : 
+              position === 'left' ? '-right-2 top-1/2 -translate-y-1/2 rotate-[225deg]' :
+              position === 'bottom' ? '-top-2 left-1/2 -translate-x-1/2 rotate-[135deg]' :
+              '-bottom-2 left-1/2 -translate-x-1/2 rotate-[-45deg]'
             }`} 
           />
           
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+          <div className="flex justify-between items-start mb-3">
+            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
               Step {step + 1}/{totalSteps}
             </span>
-            <button onClick={onSkip} className="text-gray-400 hover:text-gray-600">
-              <X className="w-3 h-3" />
+            <button onClick={onSkip} className="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 p-1 rounded-full transition-colors">
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
           
-          <h4 className="font-bold text-gray-800 text-sm mb-1">{title}</h4>
-          <p className="text-xs text-gray-600 leading-relaxed mb-3">{content}</p>
+          <h4 className="font-bold text-gray-900 text-sm mb-2">{title}</h4>
+          <p className="text-xs text-gray-600 leading-relaxed mb-4">{content}</p>
           
-          <div className="flex justify-between items-center mt-2">
+          <div className="flex justify-between items-center pt-2 border-t border-gray-100">
             <button 
               onClick={onPrev} 
               disabled={step === 0}
-              className="text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30 font-medium px-2 py-1"
+              className="text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30 font-medium px-3 py-1.5"
             >
               Back
             </button>
             <button 
               onClick={onNext} 
-              className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md font-semibold hover:bg-blue-700 shadow-sm shadow-blue-200"
+              className="text-xs bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 shadow-md shadow-blue-200 transition-all hover:scale-105"
             >
               {step === totalSteps - 1 ? 'Finish' : 'Next'}
             </button>
@@ -424,12 +432,17 @@ const App: React.FC = () => {
     setShowTour(false);
   };
 
-  const resetTour = () => {
-    // If slides exist, we are in Edit mode (step 5+). If not, we are in Creation mode (step 0).
-    const startStep = slides.length > 0 ? 5 : 0;
-    setCurrentTourStep(startStep);
-    setShowTour(true);
-    setIsSidebarOpen(true); // Open sidebar for visibility
+  // UPDATED TOGGLE LOGIC: Allows turning OFF the tour explicitly
+  const handleToggleTour = () => {
+    if (showTour) {
+      setShowTour(false);
+    } else {
+      // If turning ON, determine context
+      const startStep = slides.length > 0 ? 5 : 0;
+      setCurrentTourStep(startStep);
+      setShowTour(true);
+      setIsSidebarOpen(true); // Ensure sidebar is visible
+    }
   };
 
   // Ensure sidebar is open if we are in early steps
@@ -438,13 +451,6 @@ const App: React.FC = () => {
       setIsSidebarOpen(true);
     }
   }, [showTour, currentTourStep]);
-
-  // Ensure tour triggers if enabled and at start
-  useEffect(() => {
-      if (showTour && currentTourStep === 0 && slides.length === 0) {
-          // Just ensuring UI reflects state
-      }
-  }, []);
 
   // --- Helpers ---
 
@@ -1107,11 +1113,11 @@ const App: React.FC = () => {
           </h1>
           <div className="flex items-center gap-2">
             <button 
-              onClick={resetTour} 
+              onClick={handleToggleTour}
               className={`p-1.5 rounded-full transition-colors ${showTour ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}
-              title={showTour ? "Guided Tour Active" : "Start Guided Tour"}
+              title={showTour ? "Close Guided Tour" : "Start Guided Tour"}
             >
-              <CircleHelp className="w-4 h-4" />
+              {showTour ? <X className="w-4 h-4" /> : <CircleHelp className="w-4 h-4" />}
             </button>
             {/* Save Status Indicator */}
             <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded text-[10px] font-medium text-gray-500" title="Your settings are saved automatically">
