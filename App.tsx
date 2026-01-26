@@ -44,7 +44,8 @@ import {
   HelpCircle,
   Check,
   Save,
-  CircleHelp
+  CircleHelp,
+  History
 } from 'lucide-react';
 
 const STORAGE_KEY = 'carrousel_generator_state_v1';
@@ -230,7 +231,10 @@ const App: React.FC = () => {
   const [cursorPosition, setCursorPosition] = useState<number | null>(null); 
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false); 
+  
+  // Emoji Pickers
+  const [showChatEmojiPicker, setShowChatEmojiPicker] = useState(false); 
+  const [showInlineEmojiPicker, setShowInlineEmojiPicker] = useState(false);
 
   // UI Modals State
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -646,13 +650,28 @@ const App: React.FC = () => {
     }
   };
 
-  const onEmojiClick = (emojiData: EmojiClickData) => {
+  const onChatEmojiClick = (emojiData: EmojiClickData) => {
      // Insert into chat at cursor position
      const currentPos = cursorPosition ?? chatInput.length;
      const newText = chatInput.slice(0, currentPos) + emojiData.emoji + chatInput.slice(currentPos);
      setChatInput(newText);
      setCursorPosition(currentPos + emojiData.emoji.length);
-     setShowEmojiPicker(false);
+     setShowChatEmojiPicker(false);
+  };
+  
+  const onInlineEmojiClick = (emojiData: EmojiClickData) => {
+      if (!selectedSlideId || !selectedElement) return;
+      
+      const slide = slides.find(s => s.id === selectedSlideId);
+      if (!slide) return;
+
+      const elementKey = selectedElement === 'title' ? 'title' : 'content';
+      if (elementKey !== 'title' && elementKey !== 'content') return;
+      
+      // Simply append for now as we don't track detailed cursor in contentEditable via state
+      const newText = (slide[elementKey] || '') + emojiData.emoji;
+      setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, [elementKey]: newText } : s));
+      setShowInlineEmojiPicker(false);
   };
 
   const handleChatSubmit = async (e: React.FormEvent) => {
@@ -666,7 +685,7 @@ const App: React.FC = () => {
     setChatInput('');
     setCursorPosition(null);
     setPendingImage(null);
-    setShowEmojiPicker(false);
+    setShowChatEmojiPicker(false);
     setChatHistory(prev => [...prev, { role: 'user', text: userMsg, image: uploadedImage || undefined }]);
 
     if (!selectedSlideId) {
@@ -1277,40 +1296,9 @@ const App: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Chat History Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 min-w-[24rem]">
-                <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-start gap-3">
-                  <MessageSquare className="w-5 h-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-blue-900">Editor Assistant Active</p>
-                    <p className="text-xs text-blue-700 mt-1">
-                      {selectedElement 
-                        ? `Editing: ${selectedElement.toUpperCase()}. Use sidebar to rewrite or adjust.`
-                        : "Select any text or image on the slide to edit it."}
-                    </p>
-                  </div>
-                </div>
-
-                {chatHistory.map((msg, idx) => (
-                  <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[90%] rounded-2xl px-4 py-2.5 text-sm space-y-2 shadow-sm ${
-                        msg.role === 'user' 
-                        ? 'bg-blue-600 text-white rounded-br-sm' 
-                        : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm'
-                      }`}>
-                        {msg.image && (
-                            <img src={msg.image} alt="Uploaded" className="max-w-full rounded-lg border border-white/20" />
-                        )}
-                        {msg.text && <p className="leading-relaxed">{msg.text}</p>}
-                      </div>
-                  </div>
-                ))}
-                <div ref={chatEndRef} />
-            </div>
-
-            {/* NEW: FINE TUNING CONTROLS */}
+            {/* NEW: FINE TUNING CONTROLS (MOVED TO TOP) */}
             {currentSlide && (
-              <div className="p-4 bg-white border-t border-gray-200 animate-in slide-in-from-bottom-2">
+              <div className="flex-none p-4 bg-white border-b border-gray-200 animate-in slide-in-from-top-2 z-10 min-w-[24rem]">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-bold text-gray-800 flex items-center gap-2 uppercase tracking-wide">
                     {selectedElement ? <Move className="w-3 h-3 text-blue-600" /> : <TypeIcon className="w-3 h-3 text-blue-600" />}
@@ -1349,18 +1337,42 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {/* Text Editing Tools (Paraphrase & Emoji for Text) */}
+                {/* Text Editing Tools (Paraphrase & Inline Emoji for Text) */}
                 {(selectedElement === 'title' || selectedElement === 'content') && (
-                   <div className="grid grid-cols-1 gap-2 mb-3">
+                   <div className="grid grid-cols-2 gap-2 mb-3">
                       <button
                         onClick={() => handleParaphrase(currentSlide.id, selectedElement)}
                         disabled={isGenerating}
                         className="flex items-center justify-center gap-2 p-2.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold hover:bg-purple-100 border border-purple-100 transition-colors"
                       >
                          <Wand2 className="w-3.5 h-3.5" /> 
-                         AI Rewrite Text
+                         AI Rewrite
                       </button>
-                      {/* Removed Duplicate Emoji Button */}
+                      
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowInlineEmojiPicker(!showInlineEmojiPicker)}
+                          className="w-full flex items-center justify-center gap-2 p-2.5 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-semibold hover:bg-yellow-100 border border-yellow-100 transition-colors"
+                        >
+                           <Smile className="w-3.5 h-3.5" /> 
+                           Insert Emoji
+                        </button>
+                        
+                        {showInlineEmojiPicker && (
+                          <div className="absolute top-full right-0 mt-2 z-50 shadow-2xl rounded-xl">
+                            <div className="fixed inset-0 z-40" onClick={() => setShowInlineEmojiPicker(false)}></div>
+                            <div className="relative z-50">
+                                <EmojiPicker 
+                                  onEmojiClick={onInlineEmojiClick}
+                                  theme={Theme.LIGHT}
+                                  width={280}
+                                  height={350}
+                                  previewConfig={{ showPreview: false }}
+                                />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                    </div>
                 )}
 
@@ -1414,12 +1426,11 @@ const App: React.FC = () => {
                       <button onClick={() => handleTextAlignUpdate(currentSlide.id, 'right')} className={`p-1.5 rounded ${currentSlide.textAlign === 'right' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:bg-gray-100'}`}><AlignRight className="w-4 h-4" /></button>
                    </div>
                 )}
-
               </div>
             )}
 
             {/* Chat Input Area */}
-            <div className="p-4 bg-white border-t border-gray-200 min-w-[24rem] relative">
+            <div className="p-4 bg-white border-b border-gray-200 min-w-[24rem] relative z-0">
                 {/* Tooltip for Chat */}
                 <div className="flex items-center gap-1.5 mb-2 px-1 opacity-80 hover:opacity-100 transition-opacity cursor-help">
                    <HelpCircle className="w-3 h-3 text-blue-500" />
@@ -1454,10 +1465,10 @@ const App: React.FC = () => {
                   </div>
                 )}
                 
-                {showEmojiPicker && (
+                {showChatEmojiPicker && (
                   <div className="absolute bottom-20 left-4 z-50 animate-in slide-in-from-bottom-5">
                     <EmojiPicker 
-                      onEmojiClick={onEmojiClick}
+                      onEmojiClick={onChatEmojiClick}
                       theme={Theme.LIGHT}
                       width={300}
                       height={400}
@@ -1469,20 +1480,23 @@ const App: React.FC = () => {
                   <div className="flex gap-1">
                     <button 
                         type="button"
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        className={`p-3 rounded-xl transition-colors ${showEmojiPicker ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}
+                        onClick={() => setShowChatEmojiPicker(!showChatEmojiPicker)}
+                        className={`p-3 rounded-xl transition-colors ${showChatEmojiPicker ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}
                         title="Add Emoji"
                     >
                         <Smile className="w-5 h-5" />
                     </button>
-                    <button 
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
-                        title="Attach Image"
-                    >
-                        <Paperclip className="w-5 h-5" />
-                    </button>
+                    {/* HIDE ATTACHMENT IF TEXT IS SELECTED */}
+                    {selectedElement !== 'title' && selectedElement !== 'content' && (
+                      <button 
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                          title="Attach Image"
+                      >
+                          <Paperclip className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                   
                   <div className="relative flex-1">
@@ -1496,7 +1510,7 @@ const App: React.FC = () => {
                         onKeyUp={(e) => setCursorPosition(e.currentTarget.selectionStart)}
                         onPaste={handlePaste}
                         onFocus={() => {
-                          if (!selectedElement) setShowEmojiPicker(false)
+                          if (!selectedElement) setShowChatEmojiPicker(false)
                         }} 
                         placeholder={getChatPlaceholder()}
                         className="w-full pl-4 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm transition-all"
@@ -1513,6 +1527,36 @@ const App: React.FC = () => {
                   
                   <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
                 </form>
+            </div>
+
+            {/* Chat History Area (Renamed Activity Log, Moved Down) */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 min-w-[24rem]">
+                <div className="flex items-center gap-2 mb-2 px-2">
+                   <History className="w-3.5 h-3.5 text-gray-400" />
+                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Activity Log</span>
+                </div>
+
+                {chatHistory.length === 0 && (
+                  <div className="text-center p-4 text-gray-400 text-xs italic">
+                    No activity yet. Select a slide element to start editing.
+                  </div>
+                )}
+
+                {chatHistory.map((msg, idx) => (
+                  <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[90%] rounded-2xl px-3 py-2 text-xs space-y-1 shadow-sm ${
+                        msg.role === 'user' 
+                        ? 'bg-blue-100 text-blue-900 rounded-br-sm' 
+                        : 'bg-white border border-gray-200 text-gray-600 rounded-bl-sm'
+                      }`}>
+                        {msg.image && (
+                            <img src={msg.image} alt="Uploaded" className="max-w-full rounded-lg border border-white/20 mb-1" />
+                        )}
+                        {msg.text && <p className="leading-relaxed">{msg.text}</p>}
+                      </div>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
             </div>
 
             {/* Footer Buttons */}
