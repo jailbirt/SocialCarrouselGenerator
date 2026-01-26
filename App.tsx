@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Slide, Palette, ChatMessage, SlideElement, Position, FontPair } from './types';
 import { generateCarouselStructure, generateSlideImage, editSlideImage, determineEditIntent, updateSlideContent, updateSpecificSlideField, paraphraseText } from './services/geminiService';
 import { SlideView } from './components/SlideView';
@@ -149,7 +150,77 @@ const getSavedState = <T,>(key: string, defaultValue: T): T => {
   }
 };
 
-// --- Tour Components ---
+// --- Portal-based Floating Component Helper ---
+const PortalTooltip: React.FC<{
+  anchorRef: React.RefObject<HTMLElement | null>;
+  children: React.ReactNode;
+  position?: 'top' | 'right' | 'bottom' | 'left';
+  offset?: number;
+  className?: string;
+}> = ({ anchorRef, children, position = 'top', offset = 8, className = '' }) => {
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const updatePosition = () => {
+      if (!anchorRef.current) return;
+      const rect = anchorRef.current.getBoundingClientRect();
+      let top = 0;
+      let left = 0;
+
+      // Basic positioning logic relative to viewport
+      switch (position) {
+        case 'top':
+          top = rect.top - offset;
+          left = rect.left + rect.width / 2;
+          break;
+        case 'bottom':
+          top = rect.bottom + offset;
+          left = rect.left + rect.width / 2;
+          break;
+        case 'right':
+          top = rect.top + rect.height / 2;
+          left = rect.right + offset;
+          break;
+        case 'left':
+          top = rect.top + rect.height / 2;
+          left = rect.left - offset;
+          break;
+      }
+      setCoords({ top, left });
+    };
+
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [anchorRef, position, offset]);
+
+  if (!coords) return null;
+
+  return createPortal(
+    <div
+      className={`fixed z-[9999] ${className}`}
+      style={{
+        top: coords.top,
+        left: coords.left,
+        transform: 
+          position === 'top' ? 'translate(-50%, -100%)' :
+          position === 'bottom' ? 'translate(-50%, 0)' :
+          position === 'right' ? 'translate(0, -50%)' :
+          'translate(-100%, -50%)'
+      }}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+};
+
+
+// --- Tour Components (Portal Version) ---
 interface TourPopoverProps {
   step: number;
   totalSteps: number;
@@ -159,72 +230,81 @@ interface TourPopoverProps {
   onPrev: () => void;
   onSkip: () => void;
   position?: 'right' | 'bottom' | 'top' | 'left';
+  anchorRef: React.RefObject<HTMLElement | null>;
 }
 
-const TourPopover: React.FC<TourPopoverProps> = ({ step, totalSteps, title, content, onNext, onPrev, onSkip, position = 'right' }) => {
-  const positionClasses = {
-    right: 'left-full top-0 ml-4',
-    left: 'right-full top-0 mr-4',
-    bottom: 'top-full left-0 mt-4',
-    top: 'bottom-full left-0 mb-4'
-  };
-
+const TourPopover: React.FC<TourPopoverProps> = ({ step, totalSteps, title, content, onNext, onPrev, onSkip, position = 'right', anchorRef }) => {
   return (
-    <div className={`absolute z-[100] w-64 bg-white rounded-xl shadow-2xl border border-blue-100 p-4 animate-in zoom-in-95 duration-200 ${positionClasses[position]}`}>
-      {/* Arrow */}
-      <div className={`absolute w-3 h-3 bg-white border-l border-b border-blue-100 transform rotate-45 
-        ${position === 'right' ? '-left-1.5 top-6' : 
-          position === 'left' ? '-right-1.5 top-6 rotate-[225deg]' :
-          position === 'bottom' ? '-top-1.5 left-6 rotate-[135deg]' :
-          '-bottom-1.5 left-6 rotate-[-45deg]'
-        }`} 
-      />
-      
-      <div className="flex justify-between items-start mb-2">
-        <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-          Step {step + 1}/{totalSteps}
-        </span>
-        <button onClick={onSkip} className="text-gray-400 hover:text-gray-600">
-          <X className="w-3 h-3" />
-        </button>
-      </div>
-      
-      <h4 className="font-bold text-gray-800 text-sm mb-1">{title}</h4>
-      <p className="text-xs text-gray-600 leading-relaxed mb-3">{content}</p>
-      
-      <div className="flex justify-between items-center mt-2">
-        <button 
-          onClick={onPrev} 
-          disabled={step === 0}
-          className="text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30 font-medium px-2 py-1"
-        >
-          Back
-        </button>
-        <button 
-          onClick={onNext} 
-          className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md font-semibold hover:bg-blue-700 shadow-sm shadow-blue-200"
-        >
-          {step === totalSteps - 1 ? 'Finish' : 'Next'}
-        </button>
-      </div>
-    </div>
+    <PortalTooltip anchorRef={anchorRef} position={position} offset={12} className="pointer-events-auto">
+       <div className="w-64 bg-white rounded-xl shadow-2xl border border-blue-100 p-4 animate-in zoom-in-95 duration-200 relative">
+          {/* Visual Arrow (Approximation using absolute div inside the popover) */}
+          <div className={`absolute w-3 h-3 bg-white border-l border-b border-blue-100 transform rotate-45 
+            ${position === 'right' ? '-left-1.5 top-1/2 -translate-y-1/2' : 
+              position === 'left' ? '-right-1.5 top-1/2 -translate-y-1/2 rotate-[225deg]' :
+              position === 'bottom' ? '-top-1.5 left-1/2 -translate-x-1/2 rotate-[135deg]' :
+              '-bottom-1.5 left-1/2 -translate-x-1/2 rotate-[-45deg]'
+            }`} 
+          />
+          
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              Step {step + 1}/{totalSteps}
+            </span>
+            <button onClick={onSkip} className="text-gray-400 hover:text-gray-600">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+          
+          <h4 className="font-bold text-gray-800 text-sm mb-1">{title}</h4>
+          <p className="text-xs text-gray-600 leading-relaxed mb-3">{content}</p>
+          
+          <div className="flex justify-between items-center mt-2">
+            <button 
+              onClick={onPrev} 
+              disabled={step === 0}
+              className="text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30 font-medium px-2 py-1"
+            >
+              Back
+            </button>
+            <button 
+              onClick={onNext} 
+              className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md font-semibold hover:bg-blue-700 shadow-sm shadow-blue-200"
+            >
+              {step === totalSteps - 1 ? 'Finish' : 'Next'}
+            </button>
+          </div>
+       </div>
+    </PortalTooltip>
   );
 };
 
-// --- HelpTooltip Component ---
+// --- HelpTooltip Component (Portal Version) ---
 const HelpTooltip: React.FC<{ index: number }> = ({ index }) => {
   const data = TOUR_DATA[index];
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
   if (!data) return null;
 
   return (
-    <div className="group relative inline-block ml-1.5 align-middle">
-      <CircleHelp className="w-3.5 h-3.5 text-blue-300 hover:text-blue-500 cursor-help transition-colors" />
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-white border border-blue-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] text-left pointer-events-none">
-         <h4 className="font-bold text-gray-800 text-xs mb-1">{data.title}</h4>
-         <p className="text-[10px] text-gray-500 leading-relaxed">{data.content}</p>
-         <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-white drop-shadow-sm"></div>
+    <>
+      <div 
+        ref={triggerRef}
+        className="group relative inline-block ml-1.5 align-middle"
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+      >
+        <CircleHelp className="w-3.5 h-3.5 text-blue-300 hover:text-blue-500 cursor-help transition-colors" />
       </div>
-    </div>
+      {isVisible && (
+        <PortalTooltip anchorRef={triggerRef} position="top" offset={8} className="pointer-events-none">
+          <div className="w-56 p-3 bg-white border border-blue-100 rounded-xl shadow-xl animate-in fade-in zoom-in-95 duration-200">
+             <h4 className="font-bold text-gray-800 text-xs mb-1">{data.title}</h4>
+             <p className="text-[10px] text-gray-500 leading-relaxed">{data.content}</p>
+          </div>
+        </PortalTooltip>
+      )}
+    </>
   );
 };
 
@@ -274,6 +354,15 @@ const App: React.FC = () => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+
+  // Refs for Tour Anchors
+  const step0Ref = useRef<HTMLDivElement>(null);
+  const step1Ref = useRef<HTMLDivElement>(null);
+  const step2Ref = useRef<HTMLDivElement>(null);
+  const step3Ref = useRef<HTMLDivElement>(null);
+  const step4Ref = useRef<HTMLDivElement>(null);
+  const step5Ref = useRef<HTMLDivElement>(null); // Preview
+  const step6Ref = useRef<HTMLDivElement>(null); // Chat
 
   // Refs
   const slidesContainerRef = useRef<HTMLDivElement>(null);
@@ -1062,7 +1151,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Step 1: Topic */}
-              <div className="relative">
+              <div ref={step0Ref} className="relative">
                 <label className="text-sm font-bold text-gray-800 block">
                   {contentMode === 'generate' ? 'Topic or Description' : 'Slide Content (Literal)'}
                   <HelpTooltip index={0} />
@@ -1084,6 +1173,7 @@ const App: React.FC = () => {
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
                     position="right"
+                    anchorRef={step0Ref}
                   />
                 )}
               </div>
@@ -1096,7 +1186,7 @@ const App: React.FC = () => {
               )}
 
               {/* Step 2: Visual Style */}
-              <div className="space-y-2 relative">
+              <div ref={step1Ref} className="space-y-2 relative">
                 <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   <Paintbrush className="w-4 h-4 text-blue-600" />
                   Visual Style
@@ -1143,12 +1233,13 @@ const App: React.FC = () => {
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
                     position="right"
+                    anchorRef={step1Ref}
                   />
                 )}
               </div>
 
               {/* Step 3: Typography */}
-              <div className="space-y-2 relative">
+              <div ref={step2Ref} className="space-y-2 relative">
                 <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   <TypeIcon className="w-4 h-4 text-blue-600" />
                   Typography Style
@@ -1210,12 +1301,13 @@ const App: React.FC = () => {
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
                     position="right"
+                    anchorRef={step2Ref}
                   />
                 )}
               </div>
 
               {/* Step 4: Palette */}
-              <div className="space-y-2 relative">
+              <div ref={step3Ref} className="space-y-2 relative">
                  <div className="flex items-center justify-between">
                     <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                       <PaletteIcon className="w-4 h-4 text-blue-600" />
@@ -1315,12 +1407,13 @@ const App: React.FC = () => {
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
                     position="right"
+                    anchorRef={step3Ref}
                   />
                 )}
               </div>
 
               {/* Step 5: Generate */}
-              <div className="relative">
+              <div ref={step4Ref} className="relative">
                 <div className="flex items-center gap-2 mb-1">
                    {/* Optional: Add a label or just float the tooltip near the button area if preferred */}
                 </div>
@@ -1350,6 +1443,7 @@ const App: React.FC = () => {
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
                     position="top"
+                    anchorRef={step4Ref}
                   />
                 )}
               </div>
@@ -1389,21 +1483,51 @@ const App: React.FC = () => {
                         Font Pairing
                         <HelpTooltip index={7} />
                      </label>
-                     <div className="grid grid-cols-2 gap-2">
-                       {FONT_PAIRS.map(font => (
-                         <button
-                           key={font.name}
-                           onClick={() => handleFontChange(currentSlide.id, font.name)}
-                           className={`text-xs p-2 border rounded-lg text-left transition-all ${
-                             currentSlide.fontPair?.name === font.name 
-                             ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium shadow-sm' 
-                             : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-                           }`}
-                         >
-                           {font.name}
-                         </button>
-                       ))}
+                     <div className="relative">
+                        <select 
+                          value={currentSlide.fontPair.name === 'Custom' ? 'Custom Typography' : currentSlide.fontPair.name}
+                          onChange={(e) => handleFontChange(currentSlide.id, e.target.value)}
+                          className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs appearance-none cursor-pointer"
+                        >
+                          {FONT_PAIRS.map(font => (
+                            <option key={font.name} value={font.name}>
+                              {font.name} ({font.title.split(',')[0].replace(/'/g, '')} + {font.body.split(',')[0].replace(/'/g, '')})
+                            </option>
+                          ))}
+                          <option value="Custom Typography">Custom Typography</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                      </div>
+
+                     {/* Show Custom Font Selectors if Custom is selected for this slide */}
+                     {currentSlide.fontPair.name === 'Custom' && (
+                        <div className="grid grid-cols-2 gap-2 mt-2 animate-in fade-in slide-in-from-top-2">
+                           <div className="space-y-1">
+                             <label className="text-[10px] uppercase font-bold text-gray-500">Title Font</label>
+                             <select 
+                               value={customTitleFont} 
+                               onChange={(e) => setCustomTitleFont(e.target.value)}
+                               className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs"
+                             >
+                               {AVAILABLE_FONTS.map(f => (
+                                 <option key={f.name} value={f.value}>{f.name}</option>
+                               ))}
+                             </select>
+                           </div>
+                           <div className="space-y-1">
+                             <label className="text-[10px] uppercase font-bold text-gray-500">Body Font</label>
+                             <select 
+                               value={customBodyFont} 
+                               onChange={(e) => setCustomBodyFont(e.target.value)}
+                               className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs"
+                             >
+                               {AVAILABLE_FONTS.map(f => (
+                                 <option key={f.name} value={f.value}>{f.name}</option>
+                               ))}
+                             </select>
+                           </div>
+                        </div>
+                     )}
                   </div>
                 )}
 
@@ -1510,7 +1634,7 @@ const App: React.FC = () => {
             )}
 
             {/* Chat Input Area */}
-            <div className="p-4 bg-white border-b border-gray-200 min-w-[24rem] relative z-0">
+            <div ref={step6Ref} className="p-4 bg-white border-b border-gray-200 min-w-[24rem] relative z-0">
                 {/* Tooltip for Chat */}
                 <div className="flex items-center gap-1.5 mb-2 px-1 opacity-80 hover:opacity-100 transition-opacity cursor-help">
                    <HelpCircle className="w-3 h-3 text-blue-500" />
@@ -1530,6 +1654,7 @@ const App: React.FC = () => {
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
                     position="top"
+                    anchorRef={step6Ref}
                   />
                 )}
 
@@ -1705,7 +1830,8 @@ const App: React.FC = () => {
         >
            {/* Step 6: Preview Interaction */}
            {showTour && currentTourStep === 5 && slides.length > 0 && (
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100]">
+               <div ref={step5Ref} className="absolute top-1/2 left-1/2 w-1 h-1">
+                 {/* Anchor point in center of screen for preview step */}
                  <TourPopover 
                     step={5} 
                     totalSteps={7}
@@ -1715,8 +1841,9 @@ const App: React.FC = () => {
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
                     position="bottom"
+                    anchorRef={step5Ref}
                   />
-              </div>
+               </div>
            )}
 
            {slides.length === 0 ? (
