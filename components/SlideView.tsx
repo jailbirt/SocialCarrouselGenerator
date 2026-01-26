@@ -1,6 +1,6 @@
 import React from 'react';
 import { Slide, Palette, SlideElement } from '../types';
-import { RefreshCw, Image as ImageIcon } from 'lucide-react';
+import { RefreshCw, Image as ImageIcon, AlertCircle } from 'lucide-react';
 
 interface SlideViewProps {
   slide: Slide;
@@ -173,6 +173,21 @@ export const SlideView: React.FC<SlideViewProps> = ({
         {slide.isGeneratingImage ? (
           <div className="w-full h-full flex items-center justify-center animate-pulse bg-gray-50/50 rounded-3xl">
             <ImageIcon className="w-24 h-24 text-gray-300" />
+          </div>
+        ) : slide.error ? (
+          <div className="w-full h-full flex items-center justify-center flex-col gap-3 bg-red-50 rounded-3xl border-2 border-dashed border-red-200/80 p-4 text-center cursor-default">
+              <AlertCircle className="w-16 h-16 text-red-300" />
+              <div>
+                <p className="text-red-500 font-bold text-lg mb-1">Image Generation Failed</p>
+                {!isExport && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onRegenerateImage(e); }}
+                    className="mt-2 bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg font-bold text-sm transition-colors flex items-center gap-2 mx-auto"
+                  >
+                    <RefreshCw className="w-4 h-4" /> Try Again
+                  </button>
+                )}
+              </div>
           </div>
         ) : slide.imageBase64 ? (
             <div className="relative w-full h-full flex items-center justify-center z-10">

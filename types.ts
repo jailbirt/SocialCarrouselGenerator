@@ -19,6 +19,8 @@ export interface FontPair {
   body: string;
 }
 
+export type Language = 'es' | 'en' | 'pt';
+
 export interface Slide {
   id: string;
   title: string;
@@ -26,6 +28,7 @@ export interface Slide {
   imagePrompt: string;
   imageBase64: string | null; // Base64 string for the image
   isGeneratingImage: boolean;
+  error?: boolean; // New property to track generation errors
   layout: SlideLayout;
   imageScale?: number; // Manual resizing
   

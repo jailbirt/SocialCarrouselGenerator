@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Slide, Palette, ChatMessage, SlideElement, Position, FontPair } from './types';
+import { Slide, Palette, ChatMessage, SlideElement, Position, FontPair, Language } from './types';
 import { generateCarouselStructure, generateSlideImage, editSlideImage, determineEditIntent, updateSlideContent, updateSpecificSlideField, paraphraseText } from './services/geminiService';
 import { SlideView } from './components/SlideView';
 import { toJpeg } from 'html-to-image';
@@ -46,7 +46,8 @@ import {
   Check,
   Save,
   CircleHelp,
-  History
+  History,
+  Globe
 } from 'lucide-react';
 
 // --- OFFICIAL BRAND ICONS ---
@@ -75,6 +76,184 @@ const InstagramIcon = ({ className }: { className?: string }) => (
 );
 
 const STORAGE_KEY = 'carrousel_generator_state_v1';
+
+// --- TRANSLATIONS CONFIGURATION (SEO OPTIMIZED) ---
+const UI_TEXT = {
+  es: {
+    appTitle: "Generador de Carruseles IA",
+    aiMode: "Generación IA",
+    literalMode: "Entrada Literal",
+    topicLabel: "Tema o Descripción",
+    topicPlaceholder: "Ej: Estrategia de Marketing (Convertir texto a carrusel)...",
+    literalLabel: "Contenido Literal",
+    literalPlaceholder: "Diapositiva 1: [Título] - [Contenido]\nDiapositiva 2: ...",
+    literalHint: "La IA usará tu texto exactamente como lo escribas.",
+    visualStyle: "Estilo Visual",
+    customStyleLabel: "Prompt de Estilo Personalizado",
+    customStylePlaceholder: "Ej: Arte pixel en ciudad neón...",
+    typography: "Tipografía",
+    palette: "Paleta de Colores",
+    generateBtn: "Generar Carrusel con IA",
+    formatBtn: "Formatear Diapositivas",
+    exportTitle: "EXPORTAR",
+    linkedinBtn: "LinkedIn (PDF)",
+    instagramBtn: "Instagram (IMG)",
+    createNew: "Crear Nuevo",
+    startCreating: "Generador de Carruseles con IA",
+    startCreatingSub: "Crea carruseles online para LinkedIn e Instagram en segundos.",
+    tuningTitle: "Ajustes",
+    resetPos: "Restablecer",
+    fontPairing: "Fuente",
+    aiRewrite: "Reescribir IA",
+    insertEmoji: "Insertar Emoji",
+    chatPlaceholder: "Escribe instrucciones...",
+    activityLog: "Historial",
+    tourStep1Title: "Paso 1: Define el Tema",
+    tourStep1Content: "¡Empieza aquí! Describe el tema para crear carruseles online automáticamente.",
+    tourStep2Title: "Paso 2: Estilo Visual",
+    tourStep2Content: "Elige la vibra artística para tu generador de carruseles.",
+    tourStep3Title: "Paso 3: Tipografía",
+    tourStep3Content: "Selecciona pares de fuentes profesionales.",
+    tourStep4Title: "Paso 4: Paleta de Colores",
+    tourStep4Content: "Elige los colores de tu marca.",
+    tourStep5Title: "Paso 5: Generar",
+    tourStep5Content: "¡Haz clic para usar la inteligencia artificial!",
+    tourStep6Title: "Vista Previa Interactiva",
+    tourStep6Content: "Haz clic en cualquier texto o imagen para seleccionarlo.",
+    tourStep7Title: "Ajuste Fino",
+    tourStep7Content: "Edita textos e imágenes del carrusel fácilmente.",
+    tourStep8Title: "Asistente IA",
+    tourStep8Content: "Usa el asistente para mejorar tu carrusel para LinkedIn.",
+    tourStep9Title: "Exportar",
+    tourStep9Content: "¿Listo? Exporta como PDF (LinkedIn) o ZIP (Instagram).",
+    loadingStructure: "Diseñando estructura del carrusel con IA...",
+    loadingImages: "Renderizando imágenes con inteligencia artificial...",
+    loadingRewrite: "Optimizando texto...",
+    loadingExportPDF: "Generando carrusel PDF...",
+    loadingExportZIP: "Generando imágenes para Instagram...",
+    errorTitle: "Error",
+    resetConfirmTitle: "¿Crear nuevo carrusel?",
+    resetConfirmText: "Esta acción borrará tu trabajo actual.",
+    cancel: "Cancelar",
+    confirm: "Sí, Crear Nuevo"
+  },
+  en: {
+    appTitle: "AI Carousel Generator",
+    aiMode: "AI Generation",
+    literalMode: "Literal Input",
+    topicLabel: "Topic or Description",
+    topicPlaceholder: "e.g. Marketing Strategy (Convert text to carousel)...",
+    literalLabel: "Literal Content",
+    literalPlaceholder: "Slide 1: [Title] - [Content]\nSlide 2: ...",
+    literalHint: "AI will use your text exactly as typed.",
+    visualStyle: "Visual Style",
+    customStyleLabel: "Custom Style Prompt",
+    customStylePlaceholder: "e.g. Pixel art characters in a neon city...",
+    typography: "Typography Style",
+    palette: "Color Palette",
+    generateBtn: "Generate AI Carousel",
+    formatBtn: "Format Slides",
+    exportTitle: "EXPORT",
+    linkedinBtn: "LinkedIn (PDF)",
+    instagramBtn: "Instagram (IMG)",
+    createNew: "Create New",
+    startCreating: "AI Carousel Generator",
+    startCreatingSub: "Create carousels online for LinkedIn & Instagram instantly.",
+    tuningTitle: "Tuning",
+    resetPos: "Reset Pos",
+    fontPairing: "Font Pairing",
+    aiRewrite: "AI Rewrite",
+    insertEmoji: "Insert Emoji",
+    chatPlaceholder: "Type instructions...",
+    activityLog: "Activity Log",
+    tourStep1Title: "Step 1: Define Topic",
+    tourStep1Content: "Start here! Describe your topic to create carousels online.",
+    tourStep2Title: "Step 2: Visual Style",
+    tourStep2Content: "Choose the artistic vibe for your carousel generator.",
+    tourStep3Title: "Step 3: Typography",
+    tourStep3Content: "Select font pairings that match your brand.",
+    tourStep4Title: "Step 4: Color Palette",
+    tourStep4Content: "Pick brand colors.",
+    tourStep5Title: "Step 5: Generate",
+    tourStep5Content: "Click to generate carousel with AI!",
+    tourStep6Title: "Interactive Preview",
+    tourStep6Content: "Click elements to edit your carousel.",
+    tourStep7Title: "Fine Tuning",
+    tourStep7Content: "Customize fonts and positioning.",
+    tourStep8Title: "AI Assistant",
+    tourStep8Content: "Use AI to refine your LinkedIn carousel.",
+    tourStep9Title: "Export",
+    tourStep9Content: "Ready? Export PDF (LinkedIn) or Images (Instagram).",
+    loadingStructure: "Designing carousel structure...",
+    loadingImages: "Rendering AI images...",
+    loadingRewrite: "Rewriting text...",
+    loadingExportPDF: "Generating carousel PDF...",
+    loadingExportZIP: "Generating Instagram images...",
+    errorTitle: "Error",
+    resetConfirmTitle: "Create new carousel?",
+    resetConfirmText: "This will delete current work.",
+    cancel: "Cancel",
+    confirm: "Yes, Create New"
+  },
+  pt: {
+    appTitle: "Gerador de Carrosséis IA",
+    aiMode: "Geração IA",
+    literalMode: "Entrada Literal",
+    topicLabel: "Tópico ou Descrição",
+    topicPlaceholder: "Ex: Estratégia de Marketing (Converter texto em carrossel)...",
+    literalLabel: "Conteúdo Literal",
+    literalPlaceholder: "Slide 1: [Título] - [Conteúdo]\nSlide 2: ...",
+    literalHint: "A IA usará seu texto exatamente como digitado.",
+    visualStyle: "Estilo Visual",
+    customStyleLabel: "Prompt de Estilo Personalizado",
+    customStylePlaceholder: "Ex: Pixel art em cidade neon...",
+    typography: "Tipografia",
+    palette: "Paleta de Cores",
+    generateBtn: "Gerar Carrossel com IA",
+    formatBtn: "Formatar Slides",
+    exportTitle: "EXPORTAR",
+    linkedinBtn: "LinkedIn (PDF)",
+    instagramBtn: "Instagram (IMG)",
+    createNew: "Criar Novo",
+    startCreating: "Gerador de Carrosséis com IA",
+    startCreatingSub: "Crie carrosséis online para LinkedIn e Instagram em segundos.",
+    tuningTitle: "Ajustes",
+    resetPos: "Redefinir",
+    fontPairing: "Fonte",
+    aiRewrite: "Reescrever IA",
+    insertEmoji: "Inserir Emoji",
+    chatPlaceholder: "Digite instruções...",
+    activityLog: "Histórico",
+    tourStep1Title: "Passo 1: Definir Tópico",
+    tourStep1Content: "Comece aqui! Descreva o tópico para criar carrosséis online.",
+    tourStep2Title: "Passo 2: Estilo Visual",
+    tourStep2Content: "Escolha o estilo do seu gerador de carrosséis.",
+    tourStep3Title: "Passo 3: Tipografia",
+    tourStep3Content: "Selecione fontes profissionais.",
+    tourStep4Title: "Passo 4: Paleta de Cores",
+    tourStep4Content: "Escolha as cores da marca.",
+    tourStep5Title: "Passo 5: Gerar",
+    tourStep5Content: "Clique para gerar carrossel com inteligência artificial!",
+    tourStep6Title: "Visualização Interativa",
+    tourStep6Content: "Clique nos elementos para editar.",
+    tourStep7Title: "Ajuste Fino",
+    tourStep7Content: "Personalize fontes e posições.",
+    tourStep8Title: "Assistente IA",
+    tourStep8Content: "Use a IA para melhorar seu carrossel para LinkedIn.",
+    tourStep9Title: "Exportar",
+    tourStep9Content: "Pronto? Exporte PDF (LinkedIn) ou Imagens (Instagram).",
+    loadingStructure: "Projetando estrutura do carrossel...",
+    loadingImages: "Renderizando imagens com IA...",
+    loadingRewrite: "Otimizando texto...",
+    loadingExportPDF: "Gerando carrossel PDF...",
+    loadingExportZIP: "Gerando imagens para Instagram...",
+    errorTitle: "Erro",
+    resetConfirmTitle: "Novo Carrossel?",
+    resetConfirmText: "Isso excluirá seu trabalho atual.",
+    cancel: "Cancelar",
+    confirm: "Sim, Criar Novo"
+  }
+};
 
 const INITIAL_PALETTE: Palette = {
   background: '#1a1a1a', // Dark background by default to show off the feature
@@ -113,57 +292,25 @@ const FONT_PAIRS: FontPair[] = [
 ];
 
 const PALETTE_PRESETS = [
-  // --- Modern Standards ---
+  // ... (Same palette presets as before)
   { name: 'Dark Modern (Default)', palette: { background: '#1a1a1a', text: '#ffffff', accent: '#3b82f6' } },
   { name: 'Clean Light', palette: { background: '#ffffff', text: '#1a1a1a', accent: '#2563eb' } },
-  
-  // --- Inspired by Reference (Tech/LinkedIn) ---
   { name: 'LinkedIn Blue & Orange', palette: { background: '#004182', text: '#ffffff', accent: '#ea580c' } },
   { name: 'Tech Royal & Amber', palette: { background: '#1e40af', text: '#f8fafc', accent: '#fbbf24' } },
   { name: 'Deep Navy & Coral', palette: { background: '#0f172a', text: '#ffffff', accent: '#f87171' } },
-
-  // --- High Impact / Bold ---
   { name: 'Swiss Red & Black', palette: { background: '#dc2626', text: '#ffffff', accent: '#000000' } },
   { name: 'Cyber Black & Neon', palette: { background: '#09090b', text: '#e4e4e7', accent: '#22c55e' } },
   { name: 'Electric Purple', palette: { background: '#581c87', text: '#faf5ff', accent: '#22d3ee' } },
   { name: 'Midnight & Magenta', palette: { background: '#020617', text: '#ffffff', accent: '#d946ef' } },
-
-  // --- Professional / Elegant ---
   { name: 'Slate & Gold', palette: { background: '#334155', text: '#f8fafc', accent: '#fcd34d' } },
   { name: 'Corporate Grey', palette: { background: '#f3f4f6', text: '#111827', accent: '#059669' } },
   { name: 'Luxury Black', palette: { background: '#000000', text: '#e2e8f0', accent: '#fbbf24' } },
-
-  // --- Earth & Nature ---
   { name: 'Deep Forest', palette: { background: '#022c22', text: '#ecfccb', accent: '#84cc16' } },
   { name: 'Warm Sand', palette: { background: '#fff7ed', text: '#451a03', accent: '#d97706' } },
   { name: 'Sage & Charcoal', palette: { background: '#e2e8f0', text: '#0f172a', accent: '#4d7c0f' } },
-
-  // --- Aesthetic / Trendy ---
   { name: 'Vaporwave Pink', palette: { background: '#fce7f3', text: '#831843', accent: '#db2777' } },
   { name: 'Soft Pastel', palette: { background: '#fdf4ff', text: '#4a044e', accent: '#c026d3' } },
-
-  // --- Custom ---
   { name: 'Custom Palette', palette: null }
-];
-
-// --- TOUR DATA CENTRALIZED ---
-const TOUR_DATA = [
-  { title: "Step 1: Define Topic", content: "Start here! Describe your carousel topic or paste your content." },
-  { title: "Step 2: Visual Style", content: "Choose the artistic vibe. Corporate, Neon, Minimalist, etc." },
-  { title: "Step 3: Typography", content: "Select font pairings that match your brand voice." },
-  { title: "Step 4: Color Palette", content: "Pick brand colors. Use presets or define your own." },
-  { title: "Step 5: Generate", content: "Click to build! Don't worry, you can edit content and images after generation." },
-  // EDIT MODE STEPS
-  { title: "Interactive Preview", content: "Click any text or image on the slide to select it. This unlocks specific tools for that element." },
-  { title: "Fine Tuning", content: "Here you can change fonts, use AI to rewrite text, insert emojis, or adjust position/scale of the selected element." },
-  { title: "AI Assistant", content: "Type here to give complex instructions, regenerate images, or perform broad edits." },
-  { title: "Export", content: "Ready? Export as PDF for LinkedIn or a ZIP of Images for Instagram/TikTok." },
-  
-  // Additional Data for Edit Mode Tooltips (Indices > 8 are for local help icons)
-  { title: "Font Pairing", content: "Change the fonts for the current slide." },
-  { title: "AI Rewrite", content: "Use AI to paraphrase or improve the selected text." },
-  { title: "Insert Emoji", content: "Add an emoji at your current cursor position." },
-  { title: "Element Tuning", content: "Adjust position and scale of the selected element." }
 ];
 
 // --- Local Storage Helper ---
@@ -179,7 +326,7 @@ const getSavedState = <T,>(key: string, defaultValue: T): T => {
   }
 };
 
-// --- Portal-based Floating Component Helper ---
+// ... (PortalTooltip component remains same)
 const PortalTooltip: React.FC<{
   anchorRef: React.RefObject<HTMLElement | null>;
   children: React.ReactNode;
@@ -192,14 +339,11 @@ const PortalTooltip: React.FC<{
   const updatePosition = () => {
     if (!anchorRef.current) return;
     const rect = anchorRef.current.getBoundingClientRect();
-    
-    // Safety check: if element is hidden or not rendered, don't show
     if (rect.width === 0 && rect.height === 0) return;
 
     let top = 0;
     let left = 0;
 
-    // Basic positioning logic relative to viewport
     switch (position) {
       case 'top':
         top = rect.top - offset;
@@ -222,12 +366,9 @@ const PortalTooltip: React.FC<{
   };
 
   useLayoutEffect(() => {
-    // Initial calculation with a small delay to ensure DOM paint
     const rAF = requestAnimationFrame(updatePosition);
-    
     window.addEventListener('scroll', updatePosition, true);
     window.addEventListener('resize', updatePosition);
-    
     return () => {
       cancelAnimationFrame(rAF);
       window.removeEventListener('scroll', updatePosition, true);
@@ -256,8 +397,7 @@ const PortalTooltip: React.FC<{
   );
 };
 
-
-// --- Tour Components (Portal Version) ---
+// ... (TourPopover and HelpTooltip components remain same)
 interface TourPopoverProps {
   step: number;
   totalSteps: number;
@@ -274,7 +414,6 @@ const TourPopover: React.FC<TourPopoverProps> = ({ step, totalSteps, title, cont
   return (
     <PortalTooltip anchorRef={anchorRef} position={position} offset={15} className="pointer-events-auto filter drop-shadow-2xl">
        <div className="w-72 bg-white rounded-xl border border-blue-200 p-5 animate-in zoom-in-95 duration-200 relative shadow-2xl">
-          {/* Visual Arrow (Approximation using absolute div inside the popover) */}
           <div className={`absolute w-4 h-4 bg-white border-l border-b border-blue-200 transform rotate-45 
             ${position === 'right' ? '-left-2 top-1/2 -translate-y-1/2' : 
               position === 'left' ? '-right-2 top-1/2 -translate-y-1/2 rotate-[225deg]' :
@@ -282,7 +421,6 @@ const TourPopover: React.FC<TourPopoverProps> = ({ step, totalSteps, title, cont
               '-bottom-2 left-1/2 -translate-x-1/2 rotate-[-45deg]'
             }`} 
           />
-          
           <div className="flex justify-between items-start mb-3">
             <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
               Step {step + 1}/{totalSteps}
@@ -291,10 +429,8 @@ const TourPopover: React.FC<TourPopoverProps> = ({ step, totalSteps, title, cont
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-          
           <h4 className="font-bold text-gray-900 text-sm mb-2">{title}</h4>
           <p className="text-xs text-gray-600 leading-relaxed mb-4">{content}</p>
-          
           <div className="flex justify-between items-center pt-2 border-t border-gray-100">
             <button 
               onClick={onPrev} 
@@ -315,13 +451,15 @@ const TourPopover: React.FC<TourPopoverProps> = ({ step, totalSteps, title, cont
   );
 };
 
-// --- HelpTooltip Component (Portal Version) ---
-const HelpTooltip: React.FC<{ index: number }> = ({ index }) => {
-  const data = TOUR_DATA[index];
+const HelpTooltip: React.FC<{ index: number; title?: string; content?: string }> = ({ index, title, content }) => {
   const triggerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
 
-  if (!data) return null;
+  // Allow overriding text
+  const displayTitle = title;
+  const displayContent = content;
+
+  if (!displayTitle && !displayContent) return null;
 
   return (
     <>
@@ -336,8 +474,8 @@ const HelpTooltip: React.FC<{ index: number }> = ({ index }) => {
       {isVisible && (
         <PortalTooltip anchorRef={triggerRef} position="top" offset={8} className="pointer-events-none">
           <div className="w-56 p-3 bg-white border border-blue-100 rounded-xl shadow-xl animate-in fade-in zoom-in-95 duration-200">
-             <h4 className="font-bold text-gray-800 text-xs mb-1">{data.title}</h4>
-             <p className="text-[10px] text-gray-500 leading-relaxed">{data.content}</p>
+             <h4 className="font-bold text-gray-800 text-xs mb-1">{displayTitle}</h4>
+             <p className="text-[10px] text-gray-500 leading-relaxed">{displayContent}</p>
           </div>
         </PortalTooltip>
       )}
@@ -347,6 +485,9 @@ const HelpTooltip: React.FC<{ index: number }> = ({ index }) => {
 
 const App: React.FC = () => {
   // --- State (Initialized with LocalStorage) ---
+  const [language, setLanguage] = useState<Language>(() => getSavedState<Language>('language', 'es'));
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false); // New state for click-based menu
+
   const [topic, setTopic] = useState(() => getSavedState<string>('topic', ''));
   const [contentMode, setContentMode] = useState<'generate' | 'literal'>(() => getSavedState<'generate' | 'literal'>('contentMode', 'generate'));
   const [imageStyle, setImageStyle] = useState(() => getSavedState<string>('imageStyle', 'Corporate Vector (Default)')); 
@@ -366,16 +507,12 @@ const App: React.FC = () => {
   const [currentTourStep, setCurrentTourStep] = useState(() => getSavedState<number>('currentTourStep', 0));
   
   const [isPaletteDropdownOpen, setIsPaletteDropdownOpen] = useState(false);
-  
-  // Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
-  // Selection State
   const [selectedSlideId, setSelectedSlideId] = useState<string | null>(null);
   const [selectedElement, setSelectedElement] = useState<SlideElement>(null);
   const [lastFocusedCursorIndex, setLastFocusedCursorIndex] = useState<number>(0);
   
-  // Generation & Chat State
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [chatInput, setChatInput] = useState('');
@@ -383,44 +520,54 @@ const App: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   
-  // Emoji Pickers
   const [showChatEmojiPicker, setShowChatEmojiPicker] = useState(false); 
   const [showInlineEmojiPicker, setShowInlineEmojiPicker] = useState(false);
 
-  // UI Modals State
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
-  // Refs for Tour Anchors
   const step0Ref = useRef<HTMLDivElement>(null);
   const step1Ref = useRef<HTMLDivElement>(null);
   const step2Ref = useRef<HTMLDivElement>(null);
   const step3Ref = useRef<HTMLDivElement>(null);
   const step4Ref = useRef<HTMLDivElement>(null);
-  const step5Ref = useRef<HTMLDivElement>(null); // Preview (Center Screen)
-  const step6Ref = useRef<HTMLDivElement>(null); // Tuning
-  const step7Ref = useRef<HTMLDivElement>(null); // Chat
-  const step8Ref = useRef<HTMLDivElement>(null); // Export
+  const step5Ref = useRef<HTMLDivElement>(null); 
+  const step6Ref = useRef<HTMLDivElement>(null); 
+  const step7Ref = useRef<HTMLDivElement>(null); 
+  const step8Ref = useRef<HTMLDivElement>(null); 
 
-  // Refs
   const slidesContainerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
-  // --- Persistence Effect (FIXED: Strip Images) ---
+  // Helper for translation
+  const t = (key: keyof typeof UI_TEXT['es']) => {
+    return UI_TEXT[language][key] || UI_TEXT['es'][key];
+  };
+
+  // SEO: Dynamic Document Title
+  useEffect(() => {
+    const titles = {
+      es: "Generador de Carruseles IA para LinkedIn e Instagram | Crear Online",
+      en: "AI Carousel Generator for LinkedIn & Instagram | Create Online",
+      pt: "Gerador de Carrosséis com IA para LinkedIn e Instagram | Online"
+    };
+    document.title = titles[language] || titles['es'];
+  }, [language]);
+
   useEffect(() => {
     const saveState = () => {
       setSaveStatus('saving');
       try {
-        // Create a lightweight version of slides without images for storage
         const sanitizedSlides = slides.map(s => ({
             ...s,
-            imageBase64: null // DO NOT SAVE IMAGES
+            imageBase64: null 
         }));
 
         const stateToSave = {
+          language,
           topic,
           contentMode,
           imageStyle,
@@ -445,57 +592,36 @@ const App: React.FC = () => {
       }
     };
 
-    const timeoutId = setTimeout(saveState, 1500); // Debounce save
+    const timeoutId = setTimeout(saveState, 1500); 
     return () => clearTimeout(timeoutId);
 
-  }, [topic, contentMode, imageStyle, selectedFontPairName, customTitleFont, customBodyFont, palettePresetName, palette, customStylePrompt, slides, showTour, currentTourStep]);
+  }, [language, topic, contentMode, imageStyle, selectedFontPairName, customTitleFont, customBodyFont, palettePresetName, palette, customStylePrompt, slides, showTour, currentTourStep]);
 
-  // --- Tour Logic ---
-  const handleNextStep = () => {
-    setCurrentTourStep(prev => prev + 1);
-  };
-  
-  const handlePrevStep = () => {
-    setCurrentTourStep(prev => Math.max(0, prev - 1));
-  };
+  const handleNextStep = () => setCurrentTourStep(prev => prev + 1);
+  const handlePrevStep = () => setCurrentTourStep(prev => Math.max(0, prev - 1));
+  const handleSkipTour = () => setShowTour(false);
 
-  const handleSkipTour = () => {
-    setShowTour(false);
-  };
-
-  // UPDATED TOGGLE LOGIC: Allows turning OFF the tour explicitly
   const handleToggleTour = () => {
     if (showTour) {
       setShowTour(false);
     } else {
-      // If turning ON, determine context
       const startStep = slides.length > 0 ? 5 : 0;
       setCurrentTourStep(startStep);
       setShowTour(true);
-      setIsSidebarOpen(true); // Ensure sidebar is visible
+      setIsSidebarOpen(true);
     }
   };
 
-  // Ensure sidebar is open if we are in early steps
   useEffect(() => {
     if (showTour && currentTourStep < 5 && !isSidebarOpen) {
       setIsSidebarOpen(true);
     }
   }, [showTour, currentTourStep]);
 
-  // --- Helpers ---
+  const getEffectiveStyle = () => imageStyle === 'Custom Style' ? customStylePrompt : imageStyle;
 
-  const getEffectiveStyle = () => {
-    return imageStyle === 'Custom Style' ? customStylePrompt : imageStyle;
-  };
-
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [chatHistory]);
+  const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  useEffect(() => scrollToBottom(), [chatHistory]);
 
   const scrollToSlide = (id: string) => {
     const element = document.getElementById(id);
@@ -503,14 +629,7 @@ const App: React.FC = () => {
       element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
   };
-
-  useEffect(() => {
-    if (selectedSlideId) {
-      scrollToSlide(selectedSlideId);
-    }
-  }, [selectedSlideId]);
-
-  // --- Navigation ---
+  useEffect(() => { if (selectedSlideId) scrollToSlide(selectedSlideId); }, [selectedSlideId]);
 
   const handlePrevSlide = () => {
     if (!selectedSlideId || slides.length === 0) return;
@@ -534,27 +653,15 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        document.activeElement instanceof HTMLInputElement || 
-        document.activeElement instanceof HTMLTextAreaElement ||
-        (document.activeElement instanceof HTMLElement && document.activeElement.isContentEditable)
-      ) {
-        return;
-      }
-
+      if (document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement || (document.activeElement instanceof HTMLElement && document.activeElement.isContentEditable)) return;
       if (e.key === 'ArrowLeft') handlePrevSlide();
       if (e.key === 'ArrowRight') handleNextSlide();
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedSlideId, slides]);
 
-  // --- Core Actions ---
-
-  const handleCreateNew = () => {
-    setShowResetConfirm(true);
-  };
+  const handleCreateNew = () => setShowResetConfirm(true);
 
   const performReset = () => {
     setSlides([]);
@@ -577,63 +684,53 @@ const App: React.FC = () => {
     setShowResetConfirm(false);
     setLastFocusedCursorIndex(0);
     
-    // Clear storage but respect user's tour preference
     const tempShowTour = showTour;
+    const tempLanguage = language;
     localStorage.removeItem(STORAGE_KEY);
-    
     setCurrentTourStep(0); 
     if (tempShowTour) setShowTour(true); 
+    setLanguage(tempLanguage); // Preserve language preference on reset
   };
 
   const handlePalettePresetChange = (presetName: string) => {
     setPalettePresetName(presetName);
     const preset = PALETTE_PRESETS.find(p => p.name === presetName);
-    if (preset && preset.palette) {
-      setPalette(preset.palette);
-    }
+    if (preset && preset.palette) setPalette(preset.palette);
     setIsPaletteDropdownOpen(false);
   };
 
   const handleGenerate = async () => {
     if (!topic.trim()) return;
     if (imageStyle === 'Custom Style' && !customStylePrompt.trim()) {
-      setErrorMessage("Please describe your custom image style.");
+      setErrorMessage(t('customStylePlaceholder'));
       return;
     }
-    
-    // Auto-advance tour if active
-    if (showTour && currentTourStep === 4) {
-      handleNextStep();
-    }
+    if (showTour && currentTourStep === 4) handleNextStep();
 
     setIsGenerating(true);
-    setLoadingMessage('Designing your carousel structure...');
+    setLoadingMessage(t('loadingStructure'));
     setSlides([]);
     setSelectedSlideId(null);
     setSelectedElement(null);
     setChatHistory([]);
 
     const effectiveStyle = getEffectiveStyle();
-    
     let selectedFontPair: FontPair;
     if (selectedFontPairName === 'Custom Typography') {
-      selectedFontPair = {
-        name: 'Custom',
-        title: customTitleFont,
-        body: customBodyFont
-      };
+      selectedFontPair = { name: 'Custom', title: customTitleFont, body: customBodyFont };
     } else {
       selectedFontPair = FONT_PAIRS.find(f => f.name === selectedFontPairName) || FONT_PAIRS[0];
     }
 
     try {
-      const rawSlides = await generateCarouselStructure(topic, effectiveStyle, contentMode);
+      const rawSlides = await generateCarouselStructure(topic, effectiveStyle, contentMode, language);
       
       const newSlides: Slide[] = rawSlides.map((s, index) => ({
         ...s,
         id: `slide-${Date.now()}-${index}`,
         imageBase64: null,
         isGeneratingImage: true,
+        error: false,
         layout: s.layout || 'image-bottom',
         imageScale: 1.0, 
         titlePos: { x: 0, y: 0 },
@@ -646,7 +743,7 @@ const App: React.FC = () => {
       setSlides(newSlides);
       if (newSlides.length > 0) setSelectedSlideId(newSlides[0].id);
 
-      setLoadingMessage('Rendering illustrations...');
+      setLoadingMessage(t('loadingImages'));
       generateImagesForSlides(newSlides, effectiveStyle);
 
     } catch (error) {
@@ -669,10 +766,10 @@ const App: React.FC = () => {
 
       try {
         const base64 = await generateSlideImage(updatedSlides[i].imagePrompt, styleToUse);
-        setSlides(prev => prev.map(s => s.id === updatedSlides[i].id ? { ...s, imageBase64: base64, isGeneratingImage: false } : s));
+        setSlides(prev => prev.map(s => s.id === updatedSlides[i].id ? { ...s, imageBase64: base64, isGeneratingImage: false, error: false } : s));
       } catch (e) {
         console.error(`Failed to generate image for slide ${i}`, e);
-        setSlides(prev => prev.map(s => s.id === updatedSlides[i].id ? { ...s, isGeneratingImage: false } : s));
+        setSlides(prev => prev.map(s => s.id === updatedSlides[i].id ? { ...s, isGeneratingImage: false, error: true } : s));
       }
 
       if (i < updatedSlides.length - 1) {
@@ -686,56 +783,36 @@ const App: React.FC = () => {
     const slide = slides.find(s => s.id === slideId);
     if (!slide) return;
 
-    setSlides(prev => prev.map(s => s.id === slideId ? { ...s, isGeneratingImage: true } : s));
+    setSlides(prev => prev.map(s => s.id === slideId ? { ...s, isGeneratingImage: true, error: false } : s));
     const effectiveStyle = getEffectiveStyle();
 
     try {
       const base64 = await generateSlideImage(slide.imagePrompt, effectiveStyle);
-      setSlides(prev => prev.map(s => s.id === slideId ? { ...s, imageBase64: base64, isGeneratingImage: false } : s));
+      setSlides(prev => prev.map(s => s.id === slideId ? { ...s, imageBase64: base64, isGeneratingImage: false, error: false } : s));
     } catch (error) {
        console.error(error);
-       setSlides(prev => prev.map(s => s.id === slideId ? { ...s, isGeneratingImage: false } : s));
+       setSlides(prev => prev.map(s => s.id === slideId ? { ...s, isGeneratingImage: false, error: true } : s));
     }
   };
 
-  const handleSlideContentUpdate = (id: string, newContent: string) => {
-    setSlides(prev => prev.map(s => s.id === id ? { ...s, content: newContent } : s));
-  };
-
-  const handleSlideTitleUpdate = (id: string, newTitle: string) => {
-    setSlides(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
-  };
-
-  // --- Typography & Updates ---
+  const handleSlideContentUpdate = (id: string, newContent: string) => setSlides(prev => prev.map(s => s.id === id ? { ...s, content: newContent } : s));
+  const handleSlideTitleUpdate = (id: string, newTitle: string) => setSlides(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
 
   const handleFontChange = (id: string, fontPairName: string) => {
     let fontPair: FontPair;
     if (fontPairName === 'Custom Typography') {
-      fontPair = {
-        name: 'Custom',
-        title: customTitleFont,
-        body: customBodyFont
-      };
+      fontPair = { name: 'Custom', title: customTitleFont, body: customBodyFont };
     } else {
       fontPair = FONT_PAIRS.find(f => f.name === fontPairName) || FONT_PAIRS[0];
     }
     setSlides(prev => prev.map(s => s.id === id ? { ...s, fontPair } : s));
   };
 
-  // Update Font Pairs when Custom Selections Change
   useEffect(() => {
     if (selectedFontPairName === 'Custom Typography') {
-       // Update all slides that are set to Custom
        setSlides(prev => prev.map(s => {
          if (s.fontPair.name === 'Custom') {
-           return {
-             ...s,
-             fontPair: {
-               name: 'Custom',
-               title: customTitleFont,
-               body: customBodyFont
-             }
-           }
+           return { ...s, fontPair: { name: 'Custom', title: customTitleFont, body: customBodyFont } }
          }
          return s;
        }));
@@ -745,15 +822,12 @@ const App: React.FC = () => {
   const handleParaphrase = async (id: string, element: 'title' | 'content') => {
      const slide = slides.find(s => s.id === id);
      if(!slide) return;
-     
      const originalText = element === 'title' ? slide.title : slide.content;
      if(!originalText) return;
-
-     setLoadingMessage('Rewriting text...');
+     setLoadingMessage(t('loadingRewrite'));
      setIsGenerating(true);
-
      try {
-       const newText = await paraphraseText(originalText);
+       const newText = await paraphraseText(originalText, language);
        setSlides(prev => prev.map(s => s.id === id ? { ...s, [element]: newText } : s));
        setChatHistory(prev => [...prev, { role: 'model', text: `I've rewritten the ${element}.` }]);
      } catch(e) {
@@ -765,19 +839,14 @@ const App: React.FC = () => {
      }
   };
 
-  const handleImageScaleUpdate = (id: string, scale: number) => {
-    setSlides(prev => prev.map(s => s.id === id ? { ...s, imageScale: scale } : s));
-  };
-
+  const handleImageScaleUpdate = (id: string, scale: number) => setSlides(prev => prev.map(s => s.id === id ? { ...s, imageScale: scale } : s));
+  
   const handlePositionUpdate = (id: string, element: SlideElement, axis: 'x' | 'y', value: number) => {
     if (!element) return;
     setSlides(prev => prev.map(s => {
       if (s.id !== id) return s;
       const propName = element === 'title' ? 'titlePos' : element === 'content' ? 'contentPos' : 'imagePos';
-      return {
-        ...s,
-        [propName]: { ...s[propName], [axis]: value }
-      };
+      return { ...s, [propName]: { ...s[propName], [axis]: value } };
     }));
   };
 
@@ -790,68 +859,41 @@ const App: React.FC = () => {
      }));
   };
 
-  const handleTextAlignUpdate = (id: string, align: 'left' | 'center' | 'right') => {
-    setSlides(prev => prev.map(s => s.id === id ? { ...s, textAlign: align } : s));
-  };
-
-  // --- Image Upload & Chat Handlers ---
+  const handleTextAlignUpdate = (id: string, align: 'left' | 'center' | 'right') => setSlides(prev => prev.map(s => s.id === id ? { ...s, textAlign: align } : s));
 
   const processFile = (file: File) => {
     if (!file.type.startsWith('image/')) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
-      if (typeof e.target?.result === 'string') {
-        setPendingImage(e.target.result);
-      }
-    };
+    reader.onload = (e) => { if (typeof e.target?.result === 'string') setPendingImage(e.target.result); };
     reader.readAsDataURL(file);
   };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      processFile(e.target.files[0]);
-    }
-  };
-
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files && e.target.files[0]) processFile(e.target.files[0]); };
   const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items;
     for (const item of items) {
       if (item.type.indexOf('image') !== -1) {
         const file = item.getAsFile();
-        if (file) {
-          processFile(file);
-          e.preventDefault(); 
-        }
+        if (file) { processFile(file); e.preventDefault(); }
       }
     }
   };
-
   const onChatEmojiClick = (emojiData: EmojiClickData) => {
-     // Insert into chat at cursor position
      const currentPos = cursorPosition ?? chatInput.length;
      const newText = chatInput.slice(0, currentPos) + emojiData.emoji + chatInput.slice(currentPos);
      setChatInput(newText);
      setCursorPosition(currentPos + emojiData.emoji.length);
      setShowChatEmojiPicker(false);
   };
-  
   const onInlineEmojiClick = (emojiData: EmojiClickData) => {
       if (!selectedSlideId || !selectedElement) return;
-      
       const slide = slides.find(s => s.id === selectedSlideId);
       if (!slide) return;
-
       const elementKey = selectedElement === 'title' ? 'title' : 'content';
       if (elementKey !== 'title' && elementKey !== 'content') return;
-      
-      // INSERT AT LAST KNOWN CURSOR POSITION
       const currentText = slide[elementKey] || '';
       const insertAt = Math.min(lastFocusedCursorIndex, currentText.length);
-      
       const newText = currentText.slice(0, insertAt) + emojiData.emoji + currentText.slice(insertAt);
-      
       setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, [elementKey]: newText } : s));
-      // Advance cursor
       setLastFocusedCursorIndex(insertAt + emojiData.emoji.length);
       setShowInlineEmojiPicker(false);
   };
@@ -878,12 +920,9 @@ const App: React.FC = () => {
     const currentSlide = slides.find(s => s.id === selectedSlideId);
     if (!currentSlide) return;
 
-    // Logic: Image Selection
     if (selectedElement === 'image' || uploadedImage) {
       if (uploadedImage) {
-        setSlides(prev => prev.map(s => s.id === selectedSlideId ? { 
-          ...s, imageBase64: uploadedImage, isGeneratingImage: false 
-        } : s));
+        setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, imageBase64: uploadedImage, isGeneratingImage: false } : s));
         if (!userMsg.trim()) {
           setChatHistory(prev => [...prev, { role: 'model', text: "I've replaced the image." }]);
           return;
@@ -891,14 +930,14 @@ const App: React.FC = () => {
       }
       if (userMsg.trim()) {
         if (!currentSlide.imageBase64 && !uploadedImage) {
-          setLoadingMessage('Generating image...');
+          setLoadingMessage(t('loadingImages'));
           setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, isGeneratingImage: true } : s));
           try {
             const newImage = await generateSlideImage(userMsg, effectiveStyle);
             setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, imageBase64: newImage, isGeneratingImage: false } : s));
             setChatHistory(prev => [...prev, { role: 'model', text: "I've generated a new image." }]);
           } catch (err) {
-            setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, isGeneratingImage: false } : s));
+            setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, isGeneratingImage: false, error: true } : s));
           }
         } else {
            setLoadingMessage('Editing image...');
@@ -915,13 +954,12 @@ const App: React.FC = () => {
       return;
     }
 
-    // Logic: Text Selection
     if (selectedElement === 'title' || selectedElement === 'content') {
       if (!userMsg.trim()) return;
       const currentText = selectedElement === 'title' ? currentSlide.title : currentSlide.content;
       setChatHistory(prev => [...prev, { role: 'model', text: `Updating the ${selectedElement}...` }]);
       try {
-        const newText = await updateSpecificSlideField(currentText, selectedElement, userMsg);
+        const newText = await updateSpecificSlideField(currentText, selectedElement, userMsg, language);
         setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, [selectedElement]: newText } : s));
         setChatHistory(prev => [...prev.slice(0, -1), { role: 'model', text: `I've updated the ${selectedElement}.` }]);
       } catch (err) {
@@ -930,7 +968,6 @@ const App: React.FC = () => {
       return;
     }
 
-    // Logic: General Update
     setChatHistory(prev => [...prev, { role: 'model', text: "Processing..." }]);
     try {
       const intent = await determineEditIntent(userMsg);
@@ -944,7 +981,7 @@ const App: React.FC = () => {
         setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, imageBase64: newImage, isGeneratingImage: false } : s));
         setChatHistory(prev => [...prev.slice(0, -1), { role: 'model', text: "Image updated." }]);
       } else {
-        const updatedContent = await updateSlideContent(currentSlide, userMsg);
+        const updatedContent = await updateSlideContent(currentSlide, userMsg, language);
         setSlides(prev => prev.map(s => s.id === selectedSlideId ? { ...s, ...updatedContent } : s));
         setChatHistory(prev => [...prev.slice(0, -1), { role: 'model', text: "Slide text updated." }]);
       }
@@ -956,7 +993,7 @@ const App: React.FC = () => {
 
   const handleExportPDF = async () => {
     if (slides.length === 0) return;
-    setLoadingMessage('Exporting Optimized PDF...');
+    setLoadingMessage(t('loadingExportPDF'));
     setIsGenerating(true);
 
     try {
@@ -978,6 +1015,8 @@ const App: React.FC = () => {
             pixelRatio: 1.0, 
             backgroundColor: palette.background, 
             cacheBust: true,
+            skipAutoScale: true,
+            style: { background: palette.background } // Force background to prevent transparency issues
           });
 
           if (i > 0) pdf.addPage([1080, 1350]);
@@ -996,7 +1035,7 @@ const App: React.FC = () => {
 
   const handleExportZIP = async () => {
     if (slides.length === 0) return;
-    setLoadingMessage('Zipping Images...');
+    setLoadingMessage(t('loadingExportZIP'));
     setIsGenerating(true);
 
     try {
@@ -1018,6 +1057,8 @@ const App: React.FC = () => {
             pixelRatio: 1.0, 
             backgroundColor: palette.background, 
             cacheBust: true,
+            skipAutoScale: true,
+            style: { background: palette.background }
           });
           
           const base64Data = imgData.replace(/^data:image\/jpeg;base64,/, "");
@@ -1046,10 +1087,7 @@ const App: React.FC = () => {
 
   const getChatPlaceholder = () => {
     if (!selectedSlideId) return "Select a slide first";
-    if (selectedElement === 'title') return "Rewrite title...";
-    if (selectedElement === 'content') return "Rewrite body...";
-    if (selectedElement === 'image') return "Describe changes...";
-    return "Type instructions...";
+    return t('chatPlaceholder');
   };
 
   const getPaletteTooltip = (key: string) => {
@@ -1078,23 +1116,23 @@ const App: React.FC = () => {
                  <div className="p-2 bg-red-100 rounded-full text-red-600">
                    <AlertCircle className="w-6 h-6" />
                  </div>
-                 <h3 className="text-lg font-bold">Start New Carousel?</h3>
+                 <h3 className="text-lg font-bold">{t('resetConfirmTitle')}</h3>
                </div>
                <p className="text-gray-600 text-sm leading-relaxed">
-                 This action will <span className="font-bold text-gray-800">delete your current work</span> and reset all slides. This cannot be undone.
+                 {t('resetConfirmText')}
                </p>
                <div className="flex justify-end gap-3 mt-2">
                  <button 
                    onClick={() => setShowResetConfirm(false)}
                    className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                  >
-                   Cancel
+                   {t('cancel')}
                  </button>
                  <button 
                    onClick={performReset}
                    className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm shadow-red-200 transition-colors"
                  >
-                   Yes, Create New
+                   {t('confirm')}
                  </button>
                </div>
              </div>
@@ -1109,7 +1147,7 @@ const App: React.FC = () => {
                <div className="flex items-center justify-between">
                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                    <AlertCircle className="w-5 h-5 text-red-500" />
-                   Error
+                   {t('errorTitle')}
                  </h3>
                  <button onClick={() => setErrorMessage(null)} className="text-gray-400 hover:text-gray-600">
                    <X className="w-5 h-5" />
@@ -1138,11 +1176,12 @@ const App: React.FC = () => {
           ${isSidebarOpen ? 'w-96 opacity-100' : 'w-0 opacity-0'}`}
       >
         <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 min-w-[24rem]">
-          <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <Sparkles className="text-blue-600 w-5 h-5" />
-            CarrouselGenerator
+          {/* TITLE ADJUSTMENT: Changed text-xl to text-lg and added whitespace-nowrap to fit Portuguese/Spanish on one line */}
+          <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2 whitespace-nowrap overflow-hidden text-ellipsis">
+            <Sparkles className="text-blue-600 w-5 h-5 flex-shrink-0" />
+            {t('appTitle')}
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button 
               onClick={handleToggleTour}
               className={`p-1.5 rounded-full transition-colors ${showTour ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}
@@ -1151,7 +1190,7 @@ const App: React.FC = () => {
               {showTour ? <X className="w-4 h-4" /> : <CircleHelp className="w-4 h-4" />}
             </button>
             {/* Save Status Indicator */}
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded text-[10px] font-medium text-gray-500" title="Your settings are saved automatically">
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded text-[10px] font-medium text-gray-500 whitespace-nowrap" title="Your settings are saved automatically">
                {saveStatus === 'saving' && <Loader2 className="w-3 h-3 animate-spin" />}
                {saveStatus === 'saved' && <Check className="w-3 h-3 text-green-500" />}
                {saveStatus === 'error' && <AlertCircle className="w-3 h-3 text-red-500" />}
@@ -1172,7 +1211,7 @@ const App: React.FC = () => {
                     className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-md transition-all ${contentMode === 'generate' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                   >
                     <Brain className="w-3.5 h-3.5" />
-                    AI Generation
+                    {t('aiMode')}
                   </button>
                 </div>
 
@@ -1182,7 +1221,7 @@ const App: React.FC = () => {
                     className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-md transition-all ${contentMode === 'literal' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                   >
                     <FileText className="w-3.5 h-3.5" />
-                    Literal Input
+                    {t('literalMode')}
                   </button>
                 </div>
               </div>
@@ -1190,12 +1229,12 @@ const App: React.FC = () => {
               {/* Step 1: Topic */}
               <div ref={step0Ref} className="relative">
                 <label className="text-sm font-bold text-gray-800 block">
-                  {contentMode === 'generate' ? 'Topic or Description' : 'Slide Content (Literal)'}
-                  <HelpTooltip index={0} />
+                  {t('topicLabel')}
+                  <HelpTooltip index={0} title={t('tourStep1Title')} content={t('tourStep1Content')} />
                 </label>
                 <textarea
                   className={`w-full p-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:outline-none resize-none h-32 transition-all text-sm leading-relaxed ${contentMode === 'generate' ? 'focus:ring-blue-500' : 'focus:ring-purple-500'}`}
-                  placeholder={contentMode === 'generate' ? "e.g. 5 Tips for Remote Work Leadership..." : "Slide 1: [Title] - [Content]\nSlide 2: [Title] - [Content]"}
+                  placeholder={contentMode === 'generate' ? t('topicPlaceholder') : t('literalPlaceholder')}
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   disabled={isGenerating}
@@ -1204,8 +1243,8 @@ const App: React.FC = () => {
                   <TourPopover 
                     step={0} 
                     totalSteps={9}
-                    title={TOUR_DATA[0].title}
-                    content={TOUR_DATA[0].content}
+                    title={t('tourStep1Title')}
+                    content={t('tourStep1Content')}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1218,7 +1257,7 @@ const App: React.FC = () => {
               {contentMode === 'literal' && (
                 <p className="text-xs text-purple-600 mt-1 flex items-center gap-1">
                   <Info className="w-3 h-3" /> 
-                  AI will use your text exactly as typed.
+                  {t('literalHint')}
                 </p>
               )}
 
@@ -1226,8 +1265,8 @@ const App: React.FC = () => {
               <div ref={step1Ref} className="space-y-2 relative">
                 <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   <Paintbrush className="w-4 h-4 text-blue-600" />
-                  Visual Style
-                  <HelpTooltip index={1} />
+                  {t('visualStyle')}
+                  <HelpTooltip index={1} title={t('tourStep2Title')} content={t('tourStep2Content')} />
                 </label>
                 
                 <div className="relative">
@@ -1248,13 +1287,13 @@ const App: React.FC = () => {
                   <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center gap-2 mt-2 mb-1">
                       <PenTool className="w-3 h-3 text-purple-600" />
-                      <span className="text-xs font-semibold text-purple-700">Custom Style Prompt</span>
+                      <span className="text-xs font-semibold text-purple-700">{t('customStyleLabel')}</span>
                     </div>
                     <textarea
                       value={customStylePrompt}
                       onChange={(e) => setCustomStylePrompt(e.target.value)}
                       className="w-full p-3 bg-purple-50 border border-purple-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none text-sm resize-none h-20"
-                      placeholder="e.g. Pixel art characters in a neon city, synthwave colors..."
+                      placeholder={t('customStylePlaceholder')}
                       disabled={isGenerating}
                     />
                   </div>
@@ -1264,8 +1303,8 @@ const App: React.FC = () => {
                   <TourPopover 
                     step={1} 
                     totalSteps={9}
-                    title={TOUR_DATA[1].title}
-                    content={TOUR_DATA[1].content}
+                    title={t('tourStep2Title')}
+                    content={t('tourStep2Content')}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1279,8 +1318,8 @@ const App: React.FC = () => {
               <div ref={step2Ref} className="space-y-2 relative">
                 <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   <TypeIcon className="w-4 h-4 text-blue-600" />
-                  Typography Style
-                  <HelpTooltip index={2} />
+                  {t('typography')}
+                  <HelpTooltip index={2} title={t('tourStep3Title')} content={t('tourStep3Content')} />
                 </label>
                 <div className="relative">
                   <select 
@@ -1332,8 +1371,8 @@ const App: React.FC = () => {
                   <TourPopover 
                     step={2} 
                     totalSteps={9}
-                    title={TOUR_DATA[2].title}
-                    content={TOUR_DATA[2].content}
+                    title={t('tourStep3Title')}
+                    content={t('tourStep3Content')}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1348,8 +1387,8 @@ const App: React.FC = () => {
                  <div className="flex items-center justify-between">
                     <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                       <PaletteIcon className="w-4 h-4 text-blue-600" />
-                      Color Palette
-                      <HelpTooltip index={3} />
+                      {t('palette')}
+                      <HelpTooltip index={3} title={t('tourStep4Title')} content={t('tourStep4Content')} />
                     </label>
                  </div>
                  
@@ -1438,8 +1477,8 @@ const App: React.FC = () => {
                   <TourPopover 
                     step={3} 
                     totalSteps={9}
-                    title={TOUR_DATA[3].title}
-                    content={TOUR_DATA[3].content}
+                    title={t('tourStep4Title')}
+                    content={t('tourStep4Content')}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1464,9 +1503,9 @@ const App: React.FC = () => {
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
-                  {contentMode === 'generate' ? 'Generate Carousel' : 'Format Slides'}
+                  {contentMode === 'generate' ? t('generateBtn') : t('formatBtn')}
                   <div onClick={(e) => e.stopPropagation()} className="absolute right-4 top-1/2 -translate-y-1/2">
-                    <HelpTooltip index={4} />
+                    <HelpTooltip index={4} title={t('tourStep5Title')} content={t('tourStep5Content')} />
                   </div>
                 </button>
 
@@ -1474,8 +1513,8 @@ const App: React.FC = () => {
                   <TourPopover 
                     step={4} 
                     totalSteps={9}
-                    title={TOUR_DATA[4].title}
-                    content={TOUR_DATA[4].content}
+                    title={t('tourStep5Title')}
+                    content={t('tourStep5Content')}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1503,8 +1542,8 @@ const App: React.FC = () => {
                        <TourPopover 
                         step={6} 
                         totalSteps={9}
-                        title={TOUR_DATA[6].title}
-                        content={TOUR_DATA[6].content}
+                        title={t('tourStep7Title')}
+                        content={t('tourStep7Content')}
                         onNext={handleNextStep}
                         onPrev={handlePrevStep}
                         onSkip={handleSkipTour}
@@ -1518,15 +1557,15 @@ const App: React.FC = () => {
                   <h3 className="text-xs font-bold text-gray-800 flex items-center gap-2 uppercase tracking-wide">
                     {selectedElement ? <Move className="w-3 h-3 text-blue-600" /> : <TypeIcon className="w-3 h-3 text-blue-600" />}
                     {selectedElement ? "Element Tuning" : "Slide Typography"}
-                    <HelpTooltip index={10} />
+                    <HelpTooltip index={10} title={t('tourStep7Title')} content={t('tourStep7Content')} />
                   </h3>
                   {selectedElement && (
                     <button 
                       onClick={() => handleResetPosition(currentSlide.id, selectedElement)}
                       className="text-[10px] text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
-                      title="Reset Position"
+                      title={t('resetPos')}
                     >
-                      <RotateCcw className="w-3 h-3" /> Reset Pos
+                      <RotateCcw className="w-3 h-3" /> {t('resetPos')}
                     </button>
                   )}
                 </div>
@@ -1535,7 +1574,7 @@ const App: React.FC = () => {
                 {(!selectedElement) && (
                   <div className="mb-4">
                      <label className="text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
-                        Font Pairing
+                        {t('fontPairing')}
                         <HelpTooltip index={7} />
                      </label>
                      <div className="relative">
@@ -1596,7 +1635,7 @@ const App: React.FC = () => {
                           className="w-full flex items-center justify-center gap-2 p-2.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold hover:bg-purple-100 border border-purple-100 transition-colors"
                         >
                            <Wand2 className="w-3.5 h-3.5" /> 
-                           AI Rewrite
+                           {t('aiRewrite')}
                         </button>
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto">
                            <HelpTooltip index={8} />
@@ -1610,7 +1649,7 @@ const App: React.FC = () => {
                             className="w-full flex items-center justify-center gap-2 p-2.5 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-semibold hover:bg-yellow-100 border border-yellow-100 transition-colors"
                           >
                              <Smile className="w-3.5 h-3.5" /> 
-                             Insert Emoji
+                             {t('insertEmoji')}
                           </button>
                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto">
                               <HelpTooltip index={9} />
@@ -1694,7 +1733,7 @@ const App: React.FC = () => {
                 <div className="flex items-center gap-1.5 mb-2 px-1 opacity-80 hover:opacity-100 transition-opacity cursor-help">
                    <HelpCircle className="w-3 h-3 text-blue-500" />
                    <p className="text-[10px] text-gray-500 font-medium">
-                      Select any element (Text or Image) on the slide and type here to change it.
+                      {t('tourStep6Content')}
                    </p>
                 </div>
 
@@ -1703,8 +1742,8 @@ const App: React.FC = () => {
                   <TourPopover 
                     step={7} 
                     totalSteps={9}
-                    title={TOUR_DATA[7].title}
-                    content={TOUR_DATA[7].content}
+                    title={t('tourStep8Title')}
+                    content={t('tourStep8Content')}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1793,12 +1832,12 @@ const App: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 min-w-[24rem]">
                 <div className="flex items-center gap-2 mb-2 px-2">
                    <History className="w-3.5 h-3.5 text-gray-400" />
-                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Activity Log</span>
+                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('activityLog')}</span>
                 </div>
 
                 {chatHistory.length === 0 && (
                   <div className="text-center p-4 text-gray-400 text-xs italic">
-                    No activity yet. Select a slide element to start editing.
+                    {t('tourStep6Content')}
                   </div>
                 )}
 
@@ -1827,8 +1866,8 @@ const App: React.FC = () => {
                   <TourPopover 
                     step={8} 
                     totalSteps={9}
-                    title={TOUR_DATA[8].title}
-                    content={TOUR_DATA[8].content}
+                    title={t('tourStep9Title')}
+                    content={t('tourStep9Content')}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1837,7 +1876,7 @@ const App: React.FC = () => {
                   />
                )}
 
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0">Export</h3>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0">{t('exportTitle')}</h3>
 
               <div className="grid grid-cols-2 gap-3">
                 <button 
@@ -1847,7 +1886,7 @@ const App: React.FC = () => {
                   title="Best for LinkedIn Documents"
                 >
                    {isGenerating && loadingMessage.includes('PDF') ? <Loader2 className="animate-spin w-4 h-4" /> : <LinkedInIcon className="w-5 h-5" />}
-                   LinkedIn (PDF)
+                   {t('linkedinBtn')}
                  </button>
                  <button 
                    onClick={handleExportZIP} 
@@ -1856,13 +1895,13 @@ const App: React.FC = () => {
                    title="Best for Instagram/TikTok"
                  >
                    {isGenerating && loadingMessage.includes('ZIP') ? <Loader2 className="animate-spin w-4 h-4" /> : <InstagramIcon className="w-5 h-5" />}
-                   Instagram (IMG)
+                   {t('instagramBtn')}
                  </button>
               </div>
 
                <button onClick={handleCreateNew} disabled={isGenerating} className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2">
                  <PlusCircle className="w-4 h-4" />
-                 Create New
+                 {t('createNew')}
                </button>
             </div>
           </>
@@ -1895,13 +1934,51 @@ const App: React.FC = () => {
              )}
           </div>
 
-          <div className="flex-1 flex justify-end items-center">
+          <div className="flex-1 flex justify-end items-center gap-3">
             {isGenerating && (
               <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full flex items-center gap-2 font-medium animate-pulse">
                 <Loader2 className="animate-spin w-3 h-3" />
                 {loadingMessage || 'Working...'}
               </span>
             )}
+            
+            {/* LANGUAGE SWITCHER - FIXED UI */}
+            <div className="relative">
+               <button 
+                 onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 hover:bg-gray-100 border border-gray-200 text-xs font-semibold text-gray-600 transition-colors ${isLangMenuOpen ? 'ring-2 ring-blue-100 bg-white' : ''}`}
+               >
+                  <Globe className="w-3.5 h-3.5" />
+                  <span className="uppercase">{language}</span>
+                  <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${isLangMenuOpen ? 'rotate-180' : ''}`} />
+               </button>
+               
+               {isLangMenuOpen && (
+                 <>
+                   <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsLangMenuOpen(false)} />
+                   <div className="absolute right-0 top-full mt-2 w-40 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+                      <button 
+                        onClick={() => { setLanguage('es'); setIsLangMenuOpen(false); }} 
+                        className={`w-full text-left px-4 py-3 text-xs hover:bg-gray-50 flex items-center gap-3 border-b border-gray-50 ${language === 'es' ? 'text-blue-600 font-bold bg-blue-50/50' : 'text-gray-700'}`}
+                      >
+                         <span className="text-base">🇪🇸</span> Español
+                      </button>
+                      <button 
+                        onClick={() => { setLanguage('en'); setIsLangMenuOpen(false); }} 
+                        className={`w-full text-left px-4 py-3 text-xs hover:bg-gray-50 flex items-center gap-3 border-b border-gray-50 ${language === 'en' ? 'text-blue-600 font-bold bg-blue-50/50' : 'text-gray-700'}`}
+                      >
+                         <span className="text-base">🇺🇸</span> English
+                      </button>
+                      <button 
+                        onClick={() => { setLanguage('pt'); setIsLangMenuOpen(false); }} 
+                        className={`w-full text-left px-4 py-3 text-xs hover:bg-gray-50 flex items-center gap-3 ${language === 'pt' ? 'text-blue-600 font-bold bg-blue-50/50' : 'text-gray-700'}`}
+                      >
+                         <span className="text-base">🇧🇷</span> Português
+                      </button>
+                   </div>
+                 </>
+               )}
+            </div>
           </div>
         </div>
 
@@ -1918,8 +1995,8 @@ const App: React.FC = () => {
                  <TourPopover 
                     step={5} 
                     totalSteps={9}
-                    title={TOUR_DATA[5].title}
-                    content={TOUR_DATA[5].content}
+                    title={t('tourStep6Title')}
+                    content={t('tourStep6Content')}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1935,8 +2012,8 @@ const App: React.FC = () => {
                  <Sparkles className="w-12 h-12 text-blue-100" />
                </div>
                <div className="text-center">
-                 <h3 className="text-lg font-semibold text-gray-600">Start Creating</h3>
-                 <p className="text-sm text-gray-400 mt-1">Use the sidebar to generate your first carousel</p>
+                 <h3 className="text-lg font-semibold text-gray-600">{t('startCreating')}</h3>
+                 <p className="text-sm text-gray-400 mt-1">{t('startCreatingSub')}</p>
                </div>
              </div>
            ) : (
