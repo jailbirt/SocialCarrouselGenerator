@@ -43,7 +43,8 @@ import {
   FileText,
   HelpCircle,
   Check,
-  Save
+  Save,
+  CircleHelp
 } from 'lucide-react';
 
 const STORAGE_KEY = 'carrousel_generator_state_v1';
@@ -85,15 +86,36 @@ const FONT_PAIRS: FontPair[] = [
 ];
 
 const PALETTE_PRESETS = [
+  // --- Modern Standards ---
   { name: 'Dark Modern (Default)', palette: { background: '#1a1a1a', text: '#ffffff', accent: '#3b82f6' } },
   { name: 'Clean Light', palette: { background: '#ffffff', text: '#1a1a1a', accent: '#2563eb' } },
-  { name: 'Deep Blue & Orange', palette: { background: '#0f172a', text: '#ffffff', accent: '#f97316' } },
-  { name: 'Clean Blue & Orange', palette: { background: '#ffffff', text: '#0f172a', accent: '#ea580c' } },
-  { name: 'Regal Purple & Gold', palette: { background: '#4c1d95', text: '#faf5ff', accent: '#fbbf24' } },
-  { name: 'Charcoal & Neon Green', palette: { background: '#1f2937', text: '#f9fafb', accent: '#4ade80' } },
-  { name: 'Fresh Teal & Coral', palette: { background: '#134e4a', text: '#f0fdfa', accent: '#fb7185' } },
-  { name: 'Warm Paper & Brown', palette: { background: '#fffbeb', text: '#451a03', accent: '#d97706' } },
-  { name: 'Luxury Black & Gold', palette: { background: '#000000', text: '#e2e8f0', accent: '#fbbf24' } },
+  
+  // --- Inspired by Reference (Tech/LinkedIn) ---
+  { name: 'LinkedIn Blue & Orange', palette: { background: '#004182', text: '#ffffff', accent: '#ea580c' } },
+  { name: 'Tech Royal & Amber', palette: { background: '#1e40af', text: '#f8fafc', accent: '#fbbf24' } },
+  { name: 'Deep Navy & Coral', palette: { background: '#0f172a', text: '#ffffff', accent: '#f87171' } },
+
+  // --- High Impact / Bold ---
+  { name: 'Swiss Red & Black', palette: { background: '#dc2626', text: '#ffffff', accent: '#000000' } },
+  { name: 'Cyber Black & Neon', palette: { background: '#09090b', text: '#e4e4e7', accent: '#22c55e' } },
+  { name: 'Electric Purple', palette: { background: '#581c87', text: '#faf5ff', accent: '#22d3ee' } },
+  { name: 'Midnight & Magenta', palette: { background: '#020617', text: '#ffffff', accent: '#d946ef' } },
+
+  // --- Professional / Elegant ---
+  { name: 'Slate & Gold', palette: { background: '#334155', text: '#f8fafc', accent: '#fcd34d' } },
+  { name: 'Corporate Grey', palette: { background: '#f3f4f6', text: '#111827', accent: '#059669' } },
+  { name: 'Luxury Black', palette: { background: '#000000', text: '#e2e8f0', accent: '#fbbf24' } },
+
+  // --- Earth & Nature ---
+  { name: 'Deep Forest', palette: { background: '#022c22', text: '#ecfccb', accent: '#84cc16' } },
+  { name: 'Warm Sand', palette: { background: '#fff7ed', text: '#451a03', accent: '#d97706' } },
+  { name: 'Sage & Charcoal', palette: { background: '#e2e8f0', text: '#0f172a', accent: '#4d7c0f' } },
+
+  // --- Aesthetic / Trendy ---
+  { name: 'Vaporwave Pink', palette: { background: '#fce7f3', text: '#831843', accent: '#db2777' } },
+  { name: 'Soft Pastel', palette: { background: '#fdf4ff', text: '#4a044e', accent: '#c026d3' } },
+
+  // --- Custom ---
   { name: 'Custom Palette', palette: null }
 ];
 
@@ -108,6 +130,68 @@ const getSavedState = <T,>(key: string, defaultValue: T): T => {
     console.warn("Failed to load state", e);
     return defaultValue;
   }
+};
+
+// --- Tour Component ---
+interface TourPopoverProps {
+  step: number;
+  totalSteps: number;
+  title: string;
+  content: string;
+  onNext: () => void;
+  onPrev: () => void;
+  onSkip: () => void;
+  position?: 'right' | 'bottom' | 'top' | 'left';
+}
+
+const TourPopover: React.FC<TourPopoverProps> = ({ step, totalSteps, title, content, onNext, onPrev, onSkip, position = 'right' }) => {
+  const positionClasses = {
+    right: 'left-full top-0 ml-4',
+    left: 'right-full top-0 mr-4',
+    bottom: 'top-full left-0 mt-4',
+    top: 'bottom-full left-0 mb-4'
+  };
+
+  return (
+    <div className={`absolute z-[100] w-64 bg-white rounded-xl shadow-2xl border border-blue-100 p-4 animate-in zoom-in-95 duration-200 ${positionClasses[position]}`}>
+      {/* Arrow */}
+      <div className={`absolute w-3 h-3 bg-white border-l border-b border-blue-100 transform rotate-45 
+        ${position === 'right' ? '-left-1.5 top-6' : 
+          position === 'left' ? '-right-1.5 top-6 rotate-[225deg]' :
+          position === 'bottom' ? '-top-1.5 left-6 rotate-[135deg]' :
+          '-bottom-1.5 left-6 rotate-[-45deg]'
+        }`} 
+      />
+      
+      <div className="flex justify-between items-start mb-2">
+        <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+          Step {step + 1}/{totalSteps}
+        </span>
+        <button onClick={onSkip} className="text-gray-400 hover:text-gray-600">
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+      
+      <h4 className="font-bold text-gray-800 text-sm mb-1">{title}</h4>
+      <p className="text-xs text-gray-600 leading-relaxed mb-3">{content}</p>
+      
+      <div className="flex justify-between items-center mt-2">
+        <button 
+          onClick={onPrev} 
+          disabled={step === 0}
+          className="text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30 font-medium px-2 py-1"
+        >
+          Back
+        </button>
+        <button 
+          onClick={onNext} 
+          className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md font-semibold hover:bg-blue-700 shadow-sm shadow-blue-200"
+        >
+          {step === totalSteps - 1 ? 'Finish' : 'Next'}
+        </button>
+      </div>
+    </div>
+  );
 };
 
 const App: React.FC = () => {
@@ -125,6 +209,10 @@ const App: React.FC = () => {
   
   const [customStylePrompt, setCustomStylePrompt] = useState(() => getSavedState<string>('customStylePrompt', '')); 
   const [slides, setSlides] = useState<Slide[]>(() => getSavedState<Slide[]>('slides', []));
+  
+  // TOUR STATE
+  const [showTour, setShowTour] = useState(() => getSavedState<boolean>('showTour', true));
+  const [currentTourStep, setCurrentTourStep] = useState(() => getSavedState<number>('currentTourStep', 0));
   
   const [isPaletteDropdownOpen, setIsPaletteDropdownOpen] = useState(false);
   
@@ -170,7 +258,9 @@ const App: React.FC = () => {
           palettePresetName,
           palette,
           customStylePrompt,
-          slides // Note: Saving large base64 images might hit storage limits
+          slides, // Note: Saving large base64 images might hit storage limits
+          showTour,
+          currentTourStep
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
         setSaveStatus('saved');
@@ -186,7 +276,33 @@ const App: React.FC = () => {
     const timeoutId = setTimeout(saveState, 1000); // Debounce save by 1s
     return () => clearTimeout(timeoutId);
 
-  }, [topic, contentMode, imageStyle, selectedFontPairName, customTitleFont, customBodyFont, palettePresetName, palette, customStylePrompt, slides]);
+  }, [topic, contentMode, imageStyle, selectedFontPairName, customTitleFont, customBodyFont, palettePresetName, palette, customStylePrompt, slides, showTour, currentTourStep]);
+
+  // --- Tour Logic ---
+  const handleNextStep = () => {
+    setCurrentTourStep(prev => prev + 1);
+  };
+  
+  const handlePrevStep = () => {
+    setCurrentTourStep(prev => Math.max(0, prev - 1));
+  };
+
+  const handleSkipTour = () => {
+    setShowTour(false);
+  };
+
+  const resetTour = () => {
+    setCurrentTourStep(0);
+    setShowTour(true);
+    setIsSidebarOpen(true); // Open sidebar for step 1
+  };
+
+  // Ensure sidebar is open if we are in early steps
+  useEffect(() => {
+    if (showTour && currentTourStep < 5 && !isSidebarOpen) {
+      setIsSidebarOpen(true);
+    }
+  }, [showTour, currentTourStep]);
 
   // --- Helpers ---
 
@@ -281,8 +397,12 @@ const App: React.FC = () => {
     setIsSidebarOpen(true);
     setShowResetConfirm(false);
     
-    // Explicitly clear storage for a fresh start
+    // Explicitly clear storage for a fresh start, but KEEP tour state if user wants it
+    // We only reset the content parts
+    const tempShowTour = showTour;
     localStorage.removeItem(STORAGE_KEY);
+    // Restore tour setting preference
+    if (!tempShowTour) setShowTour(false); 
   };
 
   const handlePalettePresetChange = (presetName: string) => {
@@ -301,6 +421,11 @@ const App: React.FC = () => {
       return;
     }
     
+    // Auto-advance tour if active
+    if (showTour && currentTourStep === 4) {
+      handleNextStep();
+    }
+
     setIsGenerating(true);
     setLoadingMessage('Designing your carousel structure...');
     setSlides([]);
@@ -816,18 +941,27 @@ const App: React.FC = () => {
             <Sparkles className="text-blue-600 w-5 h-5" />
             CarrouselGenerator
           </h1>
-          {/* Save Status Indicator */}
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded text-[10px] font-medium text-gray-500" title="Your settings are saved automatically">
-             {saveStatus === 'saving' && <Loader2 className="w-3 h-3 animate-spin" />}
-             {saveStatus === 'saved' && <Check className="w-3 h-3 text-green-500" />}
-             {saveStatus === 'error' && <AlertCircle className="w-3 h-3 text-red-500" />}
-             {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Error'}
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={resetTour} 
+              className={`p-1.5 rounded-full transition-colors ${showTour ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}
+              title={showTour ? "Guided Tour Active" : "Start Guided Tour"}
+            >
+              <CircleHelp className="w-4 h-4" />
+            </button>
+            {/* Save Status Indicator */}
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded text-[10px] font-medium text-gray-500" title="Your settings are saved automatically">
+               {saveStatus === 'saving' && <Loader2 className="w-3 h-3 animate-spin" />}
+               {saveStatus === 'saved' && <Check className="w-3 h-3 text-green-500" />}
+               {saveStatus === 'error' && <AlertCircle className="w-3 h-3 text-red-500" />}
+               {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Error'}
+            </div>
           </div>
         </div>
 
         {slides.length === 0 ? (
           <div className="flex-1 overflow-y-auto p-6 space-y-8 animate-in fade-in duration-300 min-w-[24rem]">
-            <div className="space-y-4">
+            <div className="space-y-4 relative">
               
               {/* CONTENT MODE TOGGLE WITH TOOLTIPS */}
               <div className="flex items-center p-1 bg-gray-100 rounded-lg relative">
@@ -839,11 +973,6 @@ const App: React.FC = () => {
                     <Brain className="w-3.5 h-3.5" />
                     AI Generation
                   </button>
-                  {/* Tooltip */}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover/mode:opacity-100 pointer-events-none transition-opacity z-[100] text-center shadow-xl">
-                    Describe a topic and AI will create structure, copy, and images for you.
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-4 border-transparent border-b-gray-900"></div>
-                  </div>
                 </div>
 
                 <div className="relative group/mode flex-1">
@@ -854,24 +983,35 @@ const App: React.FC = () => {
                     <FileText className="w-3.5 h-3.5" />
                     Literal Input
                   </button>
-                  {/* Tooltip */}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover/mode:opacity-100 pointer-events-none transition-opacity z-[100] text-center shadow-xl">
-                    Paste your exact text. AI will format it but will NOT change your words.
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-4 border-transparent border-b-gray-900"></div>
-                  </div>
                 </div>
               </div>
 
-              <label className="text-sm font-bold text-gray-800 block">
-                {contentMode === 'generate' ? 'Topic or Description' : 'Slide Content (Literal)'}
-              </label>
-              <textarea
-                className={`w-full p-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:outline-none resize-none h-32 transition-all text-sm leading-relaxed ${contentMode === 'generate' ? 'focus:ring-blue-500' : 'focus:ring-purple-500'}`}
-                placeholder={contentMode === 'generate' ? "e.g. 5 Tips for Remote Work Leadership..." : "Slide 1: [Title] - [Content]\nSlide 2: [Title] - [Content]"}
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                disabled={isGenerating}
-              />
+              {/* Step 1: Topic */}
+              <div className="relative">
+                <label className="text-sm font-bold text-gray-800 block">
+                  {contentMode === 'generate' ? 'Topic or Description' : 'Slide Content (Literal)'}
+                </label>
+                <textarea
+                  className={`w-full p-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:outline-none resize-none h-32 transition-all text-sm leading-relaxed ${contentMode === 'generate' ? 'focus:ring-blue-500' : 'focus:ring-purple-500'}`}
+                  placeholder={contentMode === 'generate' ? "e.g. 5 Tips for Remote Work Leadership..." : "Slide 1: [Title] - [Content]\nSlide 2: [Title] - [Content]"}
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  disabled={isGenerating}
+                />
+                {showTour && currentTourStep === 0 && (
+                  <TourPopover 
+                    step={0} 
+                    totalSteps={7}
+                    title="Step 1: Define Topic" 
+                    content="Start here! Describe your carousel topic or paste your content."
+                    onNext={handleNextStep}
+                    onPrev={handlePrevStep}
+                    onSkip={handleSkipTour}
+                    position="right"
+                  />
+                )}
+              </div>
+              
               {contentMode === 'literal' && (
                 <p className="text-xs text-purple-600 mt-1 flex items-center gap-1">
                   <Info className="w-3 h-3" /> 
@@ -879,8 +1019,8 @@ const App: React.FC = () => {
                 </p>
               )}
 
-              {/* CONSOLIDATED VISUAL STYLE SELECTOR */}
-              <div className="space-y-2">
+              {/* Step 2: Visual Style */}
+              <div className="space-y-2 relative">
                 <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   <Paintbrush className="w-4 h-4 text-blue-600" />
                   Visual Style
@@ -915,10 +1055,23 @@ const App: React.FC = () => {
                     />
                   </div>
                 )}
+                
+                {showTour && currentTourStep === 1 && (
+                  <TourPopover 
+                    step={1} 
+                    totalSteps={7}
+                    title="Step 2: Visual Style" 
+                    content="Choose the artistic vibe. Corporate, Neon, Minimalist, etc."
+                    onNext={handleNextStep}
+                    onPrev={handlePrevStep}
+                    onSkip={handleSkipTour}
+                    position="right"
+                  />
+                )}
               </div>
 
-              {/* TYPOGRAPHY SELECTOR */}
-              <div className="space-y-2">
+              {/* Step 3: Typography */}
+              <div className="space-y-2 relative">
                 <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   <TypeIcon className="w-4 h-4 text-blue-600" />
                   Typography Style
@@ -968,10 +1121,23 @@ const App: React.FC = () => {
                       </div>
                    </div>
                 )}
+
+                {showTour && currentTourStep === 2 && (
+                  <TourPopover 
+                    step={2} 
+                    totalSteps={7}
+                    title="Step 3: Typography" 
+                    content="Select font pairings that match your brand voice."
+                    onNext={handleNextStep}
+                    onPrev={handlePrevStep}
+                    onSkip={handleSkipTour}
+                    position="right"
+                  />
+                )}
               </div>
 
-              {/* CUSTOM PALETTE SELECTOR WITH VISUAL PREVIEW */}
-              <div className="space-y-2">
+              {/* Step 4: Palette */}
+              <div className="space-y-2 relative">
                  <div className="flex items-center justify-between">
                     <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                       <PaletteIcon className="w-4 h-4 text-blue-600" />
@@ -1059,20 +1225,49 @@ const App: React.FC = () => {
                      ))}
                    </div>
                  )}
+                 
+                {showTour && currentTourStep === 3 && (
+                  <TourPopover 
+                    step={3} 
+                    totalSteps={7}
+                    title="Step 4: Color Palette" 
+                    content="Pick brand colors. Use presets or define your own."
+                    onNext={handleNextStep}
+                    onPrev={handlePrevStep}
+                    onSkip={handleSkipTour}
+                    position="right"
+                  />
+                )}
               </div>
 
-              <button
-                onClick={handleGenerate}
-                disabled={!topic.trim() || isGenerating || (imageStyle === 'Custom Style' && !customStylePrompt.trim())}
-                className={`w-full py-3.5 text-white rounded-xl font-semibold transition-all shadow-lg flex items-center justify-center gap-2 mt-4 ${
-                  contentMode === 'generate' 
-                  ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' 
-                  : 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
-                {contentMode === 'generate' ? 'Generate Carousel' : 'Format Slides'}
-              </button>
+              {/* Step 5: Generate */}
+              <div className="relative">
+                <button
+                  onClick={handleGenerate}
+                  disabled={!topic.trim() || isGenerating || (imageStyle === 'Custom Style' && !customStylePrompt.trim())}
+                  className={`w-full py-3.5 text-white rounded-xl font-semibold transition-all shadow-lg flex items-center justify-center gap-2 mt-4 ${
+                    contentMode === 'generate' 
+                    ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' 
+                    : 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+                  {contentMode === 'generate' ? 'Generate Carousel' : 'Format Slides'}
+                </button>
+
+                {showTour && currentTourStep === 4 && (
+                  <TourPopover 
+                    step={4} 
+                    totalSteps={7}
+                    title="Step 5: Generate" 
+                    content="Click to build! Don't worry, you can edit content and images after generation."
+                    onNext={handleNextStep}
+                    onPrev={handlePrevStep}
+                    onSkip={handleSkipTour}
+                    position="top"
+                  />
+                )}
+              </div>
             </div>
 
             {/* Bottom Section - Empty since Palette Moved */}
@@ -1224,7 +1419,7 @@ const App: React.FC = () => {
             )}
 
             {/* Chat Input Area */}
-            <div className="p-4 bg-white border-t border-gray-200 min-w-[24rem]">
+            <div className="p-4 bg-white border-t border-gray-200 min-w-[24rem] relative">
                 {/* Tooltip for Chat */}
                 <div className="flex items-center gap-1.5 mb-2 px-1 opacity-80 hover:opacity-100 transition-opacity cursor-help">
                    <HelpCircle className="w-3 h-3 text-blue-500" />
@@ -1232,6 +1427,20 @@ const App: React.FC = () => {
                       Select any element (Text or Image) on the slide and type here to change it.
                    </p>
                 </div>
+
+                {/* Step 7: Chat AI */}
+                {showTour && currentTourStep === 6 && (
+                  <TourPopover 
+                    step={6} 
+                    totalSteps={7}
+                    title="AI Assistant" 
+                    content="Type here to rewrite selected text or regenerate images instantly."
+                    onNext={handleNextStep}
+                    onPrev={handlePrevStep}
+                    onSkip={handleSkipTour}
+                    position="top"
+                  />
+                )}
 
                 {pendingImage && (
                   <div className="mb-3 flex items-center gap-2 bg-blue-50 p-2 rounded-lg border border-blue-100 animate-in slide-in-from-bottom-2">
@@ -1366,10 +1575,26 @@ const App: React.FC = () => {
 
         {/* Slides Container */}
         <div 
-          className={`flex-1 overflow-x-auto overflow-y-hidden p-8 flex items-center gap-12 snap-x snap-mandatory ${isGenerating ? 'pointer-events-none opacity-50' : ''}`}
+          className={`flex-1 overflow-x-auto overflow-y-hidden p-8 flex items-center gap-12 snap-x snap-mandatory relative ${isGenerating ? 'pointer-events-none opacity-50' : ''}`}
           ref={slidesContainerRef}
           onClick={() => setSelectedElement(null)}
         >
+           {/* Step 6: Preview Interaction */}
+           {showTour && currentTourStep === 5 && slides.length > 0 && (
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100]">
+                 <TourPopover 
+                    step={5} 
+                    totalSteps={7}
+                    title="Interactive Preview" 
+                    content="Click any text or image on the slide to select it for editing."
+                    onNext={handleNextStep}
+                    onPrev={handlePrevStep}
+                    onSkip={handleSkipTour}
+                    position="bottom"
+                  />
+              </div>
+           )}
+
            {slides.length === 0 ? (
              <div className="w-full flex flex-col items-center justify-center text-gray-400 gap-6 animate-in zoom-in-95 duration-500">
                <div className="w-32 h-32 rounded-3xl bg-white shadow-sm border border-gray-200 flex items-center justify-center">
