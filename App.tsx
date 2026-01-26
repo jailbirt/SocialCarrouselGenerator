@@ -49,6 +49,31 @@ import {
   History
 } from 'lucide-react';
 
+// --- OFFICIAL BRAND ICONS ---
+const LinkedInIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 72 72" className={className} xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" fillRule="evenodd">
+      <rect className="fill-[#0077B5]" fill="#0077B5" x="0" y="0" width="72" height="72" rx="8"/>
+      <path className="fill-[#FFF]" fill="#FFF" d="M13.139 27.848h9.623V58.81h-9.623V27.848zm4.813-15.391c3.076 0 5.586 2.508 5.586 5.583 0 3.078-2.51 5.585-5.586 5.585-3.078 0-5.585-2.507-5.585-5.585 0-3.075 2.507-5.583 5.585-5.583zM28.983 27.848h9.223v4.228h.133c1.284-2.433 4.418-4.996 9.106-4.996 9.734 0 11.534 6.406 11.534 14.735v16.995h-9.605V43.766c0-3.587-.065-8.203-4.998-8.203-5.003 0-5.77 3.908-5.77 7.943v15.304h-9.617V27.848z"/>
+    </g>
+  </svg>
+);
+
+const InstagramIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="insta_gradient" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#f09433" />
+        <stop offset="25%" stopColor="#e6683c" />
+        <stop offset="50%" stopColor="#dc2743" />
+        <stop offset="75%" stopColor="#cc2366" />
+        <stop offset="100%" stopColor="#bc1888" />
+      </linearGradient>
+    </defs>
+    <path fill="url(#insta_gradient)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+  </svg>
+);
+
 const STORAGE_KEY = 'carrousel_generator_state_v1';
 
 const INITIAL_PALETTE: Palette = {
@@ -128,9 +153,13 @@ const TOUR_DATA = [
   { title: "Step 3: Typography", content: "Select font pairings that match your brand voice." },
   { title: "Step 4: Color Palette", content: "Pick brand colors. Use presets or define your own." },
   { title: "Step 5: Generate", content: "Click to build! Don't worry, you can edit content and images after generation." },
-  { title: "Interactive Preview", content: "Click any text or image on the slide to select it for editing." },
-  { title: "AI Assistant", content: "Type here to rewrite selected text or regenerate images instantly." },
-  // Additional Data for Edit Mode Tooltips
+  // EDIT MODE STEPS
+  { title: "Interactive Preview", content: "Click any text or image on the slide to select it. This unlocks specific tools for that element." },
+  { title: "Fine Tuning", content: "Here you can change fonts, use AI to rewrite text, insert emojis, or adjust position/scale of the selected element." },
+  { title: "AI Assistant", content: "Type here to give complex instructions, regenerate images, or perform broad edits." },
+  { title: "Export", content: "Ready? Export as PDF for LinkedIn or a ZIP of Images for Instagram/TikTok." },
+  
+  // Additional Data for Edit Mode Tooltips (Indices > 8 are for local help icons)
   { title: "Font Pairing", content: "Change the fonts for the current slide." },
   { title: "AI Rewrite", content: "Use AI to paraphrase or improve the selected text." },
   { title: "Insert Emoji", content: "Add an emoji at your current cursor position." },
@@ -369,8 +398,10 @@ const App: React.FC = () => {
   const step2Ref = useRef<HTMLDivElement>(null);
   const step3Ref = useRef<HTMLDivElement>(null);
   const step4Ref = useRef<HTMLDivElement>(null);
-  const step5Ref = useRef<HTMLDivElement>(null); // Preview
-  const step6Ref = useRef<HTMLDivElement>(null); // Chat
+  const step5Ref = useRef<HTMLDivElement>(null); // Preview (Center Screen)
+  const step6Ref = useRef<HTMLDivElement>(null); // Tuning
+  const step7Ref = useRef<HTMLDivElement>(null); // Chat
+  const step8Ref = useRef<HTMLDivElement>(null); // Export
 
   // Refs
   const slidesContainerRef = useRef<HTMLDivElement>(null);
@@ -1172,7 +1203,7 @@ const App: React.FC = () => {
                 {showTour && currentTourStep === 0 && (
                   <TourPopover 
                     step={0} 
-                    totalSteps={7}
+                    totalSteps={9}
                     title={TOUR_DATA[0].title}
                     content={TOUR_DATA[0].content}
                     onNext={handleNextStep}
@@ -1232,7 +1263,7 @@ const App: React.FC = () => {
                 {showTour && currentTourStep === 1 && (
                   <TourPopover 
                     step={1} 
-                    totalSteps={7}
+                    totalSteps={9}
                     title={TOUR_DATA[1].title}
                     content={TOUR_DATA[1].content}
                     onNext={handleNextStep}
@@ -1300,7 +1331,7 @@ const App: React.FC = () => {
                 {showTour && currentTourStep === 2 && (
                   <TourPopover 
                     step={2} 
-                    totalSteps={7}
+                    totalSteps={9}
                     title={TOUR_DATA[2].title}
                     content={TOUR_DATA[2].content}
                     onNext={handleNextStep}
@@ -1406,7 +1437,7 @@ const App: React.FC = () => {
                 {showTour && currentTourStep === 3 && (
                   <TourPopover 
                     step={3} 
-                    totalSteps={7}
+                    totalSteps={9}
                     title={TOUR_DATA[3].title}
                     content={TOUR_DATA[3].content}
                     onNext={handleNextStep}
@@ -1442,7 +1473,7 @@ const App: React.FC = () => {
                 {showTour && currentTourStep === 4 && (
                   <TourPopover 
                     step={4} 
-                    totalSteps={7}
+                    totalSteps={9}
                     title={TOUR_DATA[4].title}
                     content={TOUR_DATA[4].content}
                     onNext={handleNextStep}
@@ -1464,7 +1495,25 @@ const App: React.FC = () => {
           <>
             {/* NEW: FINE TUNING CONTROLS (MOVED TO TOP) */}
             {currentSlide && (
-              <div className="flex-none p-4 bg-white border-b border-gray-200 animate-in slide-in-from-top-2 z-10 min-w-[24rem]">
+              <div ref={step6Ref} className="flex-none p-4 bg-white border-b border-gray-200 animate-in slide-in-from-top-2 z-10 min-w-[24rem]">
+                
+                 {/* Step 7: Tuning (Now step 6 in zero-indexed logic if considering flow) */}
+                 {showTour && currentTourStep === 6 && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-1 h-1">
+                       <TourPopover 
+                        step={6} 
+                        totalSteps={9}
+                        title={TOUR_DATA[6].title}
+                        content={TOUR_DATA[6].content}
+                        onNext={handleNextStep}
+                        onPrev={handlePrevStep}
+                        onSkip={handleSkipTour}
+                        position="bottom"
+                        anchorRef={step6Ref}
+                      />
+                    </div>
+                  )}
+
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-bold text-gray-800 flex items-center gap-2 uppercase tracking-wide">
                     {selectedElement ? <Move className="w-3 h-3 text-blue-600" /> : <TypeIcon className="w-3 h-3 text-blue-600" />}
@@ -1640,7 +1689,7 @@ const App: React.FC = () => {
             )}
 
             {/* Chat Input Area */}
-            <div ref={step6Ref} className="p-4 bg-white border-b border-gray-200 min-w-[24rem] relative z-0">
+            <div ref={step7Ref} className="p-4 bg-white border-b border-gray-200 min-w-[24rem] relative z-0">
                 {/* Tooltip for Chat */}
                 <div className="flex items-center gap-1.5 mb-2 px-1 opacity-80 hover:opacity-100 transition-opacity cursor-help">
                    <HelpCircle className="w-3 h-3 text-blue-500" />
@@ -1649,18 +1698,18 @@ const App: React.FC = () => {
                    </p>
                 </div>
 
-                {/* Step 7: Chat AI */}
-                {showTour && currentTourStep === 6 && (
+                {/* Step 8: Chat AI (Now step 7) */}
+                {showTour && currentTourStep === 7 && (
                   <TourPopover 
-                    step={6} 
-                    totalSteps={7}
-                    title={TOUR_DATA[6].title}
-                    content={TOUR_DATA[6].content}
+                    step={7} 
+                    totalSteps={9}
+                    title={TOUR_DATA[7].title}
+                    content={TOUR_DATA[7].content}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
                     position="top"
-                    anchorRef={step6Ref}
+                    anchorRef={step7Ref}
                   />
                 )}
 
@@ -1771,15 +1820,43 @@ const App: React.FC = () => {
             </div>
 
             {/* Footer Buttons */}
-            <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-col gap-3 min-w-[24rem]">
+            <div ref={step8Ref} className="p-4 bg-gray-50 border-t border-gray-200 flex flex-col gap-3 min-w-[24rem] relative">
+              
+              {/* Step 9: Export (Now step 8) */}
+              {showTour && currentTourStep === 8 && (
+                  <TourPopover 
+                    step={8} 
+                    totalSteps={9}
+                    title={TOUR_DATA[8].title}
+                    content={TOUR_DATA[8].content}
+                    onNext={handleNextStep}
+                    onPrev={handlePrevStep}
+                    onSkip={handleSkipTour}
+                    position="top"
+                    anchorRef={step8Ref}
+                  />
+               )}
+
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0">Export</h3>
+
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={handleExportPDF} disabled={isGenerating} className="py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
-                   {isGenerating && loadingMessage.includes('PDF') ? <Loader2 className="animate-spin w-4 h-4" /> : <FileDown className="w-4 h-4" />}
-                   Export PDF
+                <button 
+                  onClick={handleExportPDF} 
+                  disabled={isGenerating} 
+                  className="py-2.5 bg-white border border-blue-200 hover:bg-blue-50 text-blue-800 rounded-lg font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
+                  title="Best for LinkedIn Documents"
+                >
+                   {isGenerating && loadingMessage.includes('PDF') ? <Loader2 className="animate-spin w-4 h-4" /> : <LinkedInIcon className="w-5 h-5" />}
+                   LinkedIn (PDF)
                  </button>
-                 <button onClick={handleExportZIP} disabled={isGenerating} className="py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
-                   {isGenerating && loadingMessage.includes('ZIP') ? <Loader2 className="animate-spin w-4 h-4" /> : <Images className="w-4 h-4" />}
-                   Export Images
+                 <button 
+                   onClick={handleExportZIP} 
+                   disabled={isGenerating} 
+                   className="py-2.5 bg-white border border-pink-200 hover:bg-pink-50 text-pink-700 rounded-lg font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
+                   title="Best for Instagram/TikTok"
+                 >
+                   {isGenerating && loadingMessage.includes('ZIP') ? <Loader2 className="animate-spin w-4 h-4" /> : <InstagramIcon className="w-5 h-5" />}
+                   Instagram (IMG)
                  </button>
               </div>
 
@@ -1840,7 +1917,7 @@ const App: React.FC = () => {
                  {/* Anchor point in center of screen for preview step */}
                  <TourPopover 
                     step={5} 
-                    totalSteps={7}
+                    totalSteps={9}
                     title={TOUR_DATA[5].title}
                     content={TOUR_DATA[5].content}
                     onNext={handleNextStep}
