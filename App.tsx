@@ -120,6 +120,17 @@ const PALETTE_PRESETS = [
   { name: 'Custom Palette', palette: null }
 ];
 
+// --- TOUR DATA CENTRALIZED ---
+const TOUR_DATA = [
+  { title: "Step 1: Define Topic", content: "Start here! Describe your carousel topic or paste your content." },
+  { title: "Step 2: Visual Style", content: "Choose the artistic vibe. Corporate, Neon, Minimalist, etc." },
+  { title: "Step 3: Typography", content: "Select font pairings that match your brand voice." },
+  { title: "Step 4: Color Palette", content: "Pick brand colors. Use presets or define your own." },
+  { title: "Step 5: Generate", content: "Click to build! Don't worry, you can edit content and images after generation." },
+  { title: "Interactive Preview", content: "Click any text or image on the slide to select it for editing." },
+  { title: "AI Assistant", content: "Type here to rewrite selected text or regenerate images instantly." }
+];
+
 // --- Local Storage Helper ---
 const getSavedState = <T,>(key: string, defaultValue: T): T => {
   try {
@@ -133,7 +144,7 @@ const getSavedState = <T,>(key: string, defaultValue: T): T => {
   }
 };
 
-// --- Tour Component ---
+// --- Tour Components ---
 interface TourPopoverProps {
   step: number;
   totalSteps: number;
@@ -190,6 +201,23 @@ const TourPopover: React.FC<TourPopoverProps> = ({ step, totalSteps, title, cont
         >
           {step === totalSteps - 1 ? 'Finish' : 'Next'}
         </button>
+      </div>
+    </div>
+  );
+};
+
+// --- NEW: HelpTooltip Component ---
+const HelpTooltip: React.FC<{ index: number }> = ({ index }) => {
+  const data = TOUR_DATA[index];
+  if (!data) return null;
+
+  return (
+    <div className="group relative inline-block ml-1.5 align-middle">
+      <CircleHelp className="w-3.5 h-3.5 text-blue-200 hover:text-blue-500 cursor-help transition-colors" />
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-white border border-blue-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] text-left">
+         <h4 className="font-bold text-gray-800 text-xs mb-1">{data.title}</h4>
+         <p className="text-[10px] text-gray-500 leading-relaxed">{data.content}</p>
+         <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-white drop-shadow-sm"></div>
       </div>
     </div>
   );
@@ -296,9 +324,11 @@ const App: React.FC = () => {
   };
 
   const resetTour = () => {
-    setCurrentTourStep(0);
+    // If slides exist, we are in Edit mode (step 5+). If not, we are in Creation mode (step 0).
+    const startStep = slides.length > 0 ? 5 : 0;
+    setCurrentTourStep(startStep);
     setShowTour(true);
-    setIsSidebarOpen(true); // Open sidebar for step 1
+    setIsSidebarOpen(true); // Open sidebar for visibility
   };
 
   // Ensure sidebar is open if we are in early steps
@@ -402,11 +432,11 @@ const App: React.FC = () => {
     setShowResetConfirm(false);
     
     // Explicitly clear storage for a fresh start, but KEEP tour state if user wants it
-    // We only reset the content parts
     const tempShowTour = showTour;
     localStorage.removeItem(STORAGE_KEY);
-    // Restore tour setting preference
-    if (!tempShowTour) setShowTour(false); 
+    // Start tour from scratch if active
+    setCurrentTourStep(0); 
+    if (tempShowTour) setShowTour(true); 
   };
 
   const handlePalettePresetChange = (presetName: string) => {
@@ -1009,6 +1039,7 @@ const App: React.FC = () => {
               <div className="relative">
                 <label className="text-sm font-bold text-gray-800 block">
                   {contentMode === 'generate' ? 'Topic or Description' : 'Slide Content (Literal)'}
+                  <HelpTooltip index={0} />
                 </label>
                 <textarea
                   className={`w-full p-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:outline-none resize-none h-32 transition-all text-sm leading-relaxed ${contentMode === 'generate' ? 'focus:ring-blue-500' : 'focus:ring-purple-500'}`}
@@ -1021,8 +1052,8 @@ const App: React.FC = () => {
                   <TourPopover 
                     step={0} 
                     totalSteps={7}
-                    title="Step 1: Define Topic" 
-                    content="Start here! Describe your carousel topic or paste your content."
+                    title={TOUR_DATA[0].title}
+                    content={TOUR_DATA[0].content}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1043,6 +1074,7 @@ const App: React.FC = () => {
                 <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   <Paintbrush className="w-4 h-4 text-blue-600" />
                   Visual Style
+                  <HelpTooltip index={1} />
                 </label>
                 
                 <div className="relative">
@@ -1079,8 +1111,8 @@ const App: React.FC = () => {
                   <TourPopover 
                     step={1} 
                     totalSteps={7}
-                    title="Step 2: Visual Style" 
-                    content="Choose the artistic vibe. Corporate, Neon, Minimalist, etc."
+                    title={TOUR_DATA[1].title}
+                    content={TOUR_DATA[1].content}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1094,6 +1126,7 @@ const App: React.FC = () => {
                 <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   <TypeIcon className="w-4 h-4 text-blue-600" />
                   Typography Style
+                  <HelpTooltip index={2} />
                 </label>
                 <div className="relative">
                   <select 
@@ -1145,8 +1178,8 @@ const App: React.FC = () => {
                   <TourPopover 
                     step={2} 
                     totalSteps={7}
-                    title="Step 3: Typography" 
-                    content="Select font pairings that match your brand voice."
+                    title={TOUR_DATA[2].title}
+                    content={TOUR_DATA[2].content}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1161,6 +1194,7 @@ const App: React.FC = () => {
                     <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                       <PaletteIcon className="w-4 h-4 text-blue-600" />
                       Color Palette
+                      <HelpTooltip index={3} />
                     </label>
                  </div>
                  
@@ -1249,8 +1283,8 @@ const App: React.FC = () => {
                   <TourPopover 
                     step={3} 
                     totalSteps={7}
-                    title="Step 4: Color Palette" 
-                    content="Pick brand colors. Use presets or define your own."
+                    title={TOUR_DATA[3].title}
+                    content={TOUR_DATA[3].content}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1261,10 +1295,13 @@ const App: React.FC = () => {
 
               {/* Step 5: Generate */}
               <div className="relative">
+                <div className="flex items-center gap-2 mb-1">
+                   {/* Optional: Add a label or just float the tooltip near the button area if preferred */}
+                </div>
                 <button
                   onClick={handleGenerate}
                   disabled={!topic.trim() || isGenerating || (imageStyle === 'Custom Style' && !customStylePrompt.trim())}
-                  className={`w-full py-3.5 text-white rounded-xl font-semibold transition-all shadow-lg flex items-center justify-center gap-2 mt-4 ${
+                  className={`w-full py-3.5 text-white rounded-xl font-semibold transition-all shadow-lg flex items-center justify-center gap-2 mt-4 relative group ${
                     contentMode === 'generate' 
                     ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' 
                     : 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
@@ -1272,14 +1309,17 @@ const App: React.FC = () => {
                 >
                   {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
                   {contentMode === 'generate' ? 'Generate Carousel' : 'Format Slides'}
+                  <div onClick={(e) => e.stopPropagation()} className="absolute right-4 top-1/2 -translate-y-1/2">
+                    <HelpTooltip index={4} />
+                  </div>
                 </button>
 
                 {showTour && currentTourStep === 4 && (
                   <TourPopover 
                     step={4} 
                     totalSteps={7}
-                    title="Step 5: Generate" 
-                    content="Click to build! Don't worry, you can edit content and images after generation."
+                    title={TOUR_DATA[4].title}
+                    content={TOUR_DATA[4].content}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1444,8 +1484,8 @@ const App: React.FC = () => {
                   <TourPopover 
                     step={6} 
                     totalSteps={7}
-                    title="AI Assistant" 
-                    content="Type here to rewrite selected text or regenerate images instantly."
+                    title={TOUR_DATA[6].title}
+                    content={TOUR_DATA[6].content}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
@@ -1629,8 +1669,8 @@ const App: React.FC = () => {
                  <TourPopover 
                     step={5} 
                     totalSteps={7}
-                    title="Interactive Preview" 
-                    content="Click any text or image on the slide to select it for editing."
+                    title={TOUR_DATA[5].title}
+                    content={TOUR_DATA[5].content}
                     onNext={handleNextStep}
                     onPrev={handlePrevStep}
                     onSkip={handleSkipTour}
