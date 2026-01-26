@@ -40,7 +40,9 @@ import {
   Type as TypeIcon,
   Wand2,
   Brain,
-  FileText
+  FileText,
+  HelpCircle,
+  Check
 } from 'lucide-react';
 
 const INITIAL_PALETTE: Palette = {
@@ -60,6 +62,17 @@ const STYLE_PRESETS = [
   "Custom Style"
 ];
 
+const AVAILABLE_FONTS = [
+  { name: 'Inter', value: "'Inter', sans-serif" },
+  { name: 'Lato', value: "'Lato', sans-serif" },
+  { name: 'Merriweather', value: "'Merriweather', serif" },
+  { name: 'Oswald', value: "'Oswald', sans-serif" },
+  { name: 'Playfair Display', value: "'Playfair Display', serif" },
+  { name: 'Roboto', value: "'Roboto', sans-serif" },
+  { name: 'Source Sans 3', value: "'Source Sans 3', sans-serif" },
+  { name: 'Space Grotesk', value: "'Space Grotesk', sans-serif" }
+];
+
 const FONT_PAIRS: FontPair[] = [
   { name: 'Modern', title: "'Space Grotesk', sans-serif", body: "'Inter', sans-serif" },
   { name: 'Clean', title: "'Inter', sans-serif", body: "'Inter', sans-serif" },
@@ -68,12 +81,28 @@ const FONT_PAIRS: FontPair[] = [
   { name: 'Classic', title: "'Merriweather', serif", body: "'Source Sans 3', sans-serif" },
 ];
 
+const PALETTE_PRESETS = [
+  { name: 'Dark Modern (Default)', palette: { background: '#1a1a1a', text: '#ffffff', accent: '#3b82f6' } },
+  { name: 'Clean Light', palette: { background: '#ffffff', text: '#1a1a1a', accent: '#2563eb' } },
+  { name: 'Midnight', palette: { background: '#0f172a', text: '#f8fafc', accent: '#8b5cf6' } },
+  { name: 'Nature', palette: { background: '#052e16', text: '#f0fdf4', accent: '#4ade80' } },
+  { name: 'Warm Paper', palette: { background: '#fffbeb', text: '#451a03', accent: '#d97706' } },
+  { name: 'Luxury', palette: { background: '#000000', text: '#e2e8f0', accent: '#fbbf24' } },
+  { name: 'Custom Palette', palette: null }
+];
+
 const App: React.FC = () => {
   // --- State ---
   const [topic, setTopic] = useState('');
   const [contentMode, setContentMode] = useState<'generate' | 'literal'>('generate'); // New state for input mode
   const [imageStyle, setImageStyle] = useState('Corporate Vector (Default)'); 
-  const [selectedFontPairName, setSelectedFontPairName] = useState(FONT_PAIRS[0].name); // New state for typography
+  const [selectedFontPairName, setSelectedFontPairName] = useState(FONT_PAIRS[0].name); 
+  const [customTitleFont, setCustomTitleFont] = useState(AVAILABLE_FONTS[7].value); // Space Grotesk
+  const [customBodyFont, setCustomBodyFont] = useState(AVAILABLE_FONTS[0].value); // Inter
+  
+  const [palettePresetName, setPalettePresetName] = useState(PALETTE_PRESETS[0].name);
+  const [isPaletteDropdownOpen, setIsPaletteDropdownOpen] = useState(false); // Custom dropdown state
+  
   const [customStylePrompt, setCustomStylePrompt] = useState(''); 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [palette, setPalette] = useState<Palette>(INITIAL_PALETTE);
@@ -91,7 +120,6 @@ const App: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [cursorPosition, setCursorPosition] = useState<number | null>(null); // Track cursor for chat input
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [showPalette, setShowPalette] = useState(true); 
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false); 
 
@@ -184,6 +212,8 @@ const App: React.FC = () => {
     setContentMode('generate');
     setImageStyle('Corporate Vector (Default)'); 
     setSelectedFontPairName(FONT_PAIRS[0].name);
+    setPalettePresetName(PALETTE_PRESETS[0].name);
+    setIsPaletteDropdownOpen(false);
     setCustomStylePrompt('');
     setChatHistory([]);
     setSelectedSlideId(null);
@@ -194,8 +224,16 @@ const App: React.FC = () => {
     setPendingImage(null);
     setIsGenerating(false);
     setIsSidebarOpen(true);
-    setShowPalette(true); 
     setShowResetConfirm(false);
+  };
+
+  const handlePalettePresetChange = (presetName: string) => {
+    setPalettePresetName(presetName);
+    const preset = PALETTE_PRESETS.find(p => p.name === presetName);
+    if (preset && preset.palette) {
+      setPalette(preset.palette);
+    }
+    setIsPaletteDropdownOpen(false);
   };
 
   const handleGenerate = async () => {
@@ -213,7 +251,17 @@ const App: React.FC = () => {
     setChatHistory([]);
 
     const effectiveStyle = getEffectiveStyle();
-    const selectedFontPair = FONT_PAIRS.find(f => f.name === selectedFontPairName) || FONT_PAIRS[0];
+    
+    let selectedFontPair: FontPair;
+    if (selectedFontPairName === 'Custom Typography') {
+      selectedFontPair = {
+        name: 'Custom',
+        title: customTitleFont,
+        body: customBodyFont
+      };
+    } else {
+      selectedFontPair = FONT_PAIRS.find(f => f.name === selectedFontPairName) || FONT_PAIRS[0];
+    }
 
     try {
       const rawSlides = await generateCarouselStructure(topic, effectiveStyle, contentMode);
@@ -229,7 +277,7 @@ const App: React.FC = () => {
         contentPos: { x: 0, y: 0 },
         imagePos: { x: 0, y: 0 },
         textAlign: 'center',
-        fontPair: selectedFontPair // Use selected font pair
+        fontPair: selectedFontPair 
       }));
 
       setSlides(newSlides);
@@ -298,9 +346,38 @@ const App: React.FC = () => {
   // --- Typography & Updates ---
 
   const handleFontChange = (id: string, fontPairName: string) => {
-    const fontPair = FONT_PAIRS.find(f => f.name === fontPairName) || FONT_PAIRS[0];
+    let fontPair: FontPair;
+    if (fontPairName === 'Custom Typography') {
+      fontPair = {
+        name: 'Custom',
+        title: customTitleFont,
+        body: customBodyFont
+      };
+    } else {
+      fontPair = FONT_PAIRS.find(f => f.name === fontPairName) || FONT_PAIRS[0];
+    }
     setSlides(prev => prev.map(s => s.id === id ? { ...s, fontPair } : s));
   };
+
+  // Update Font Pairs when Custom Selections Change
+  useEffect(() => {
+    if (selectedFontPairName === 'Custom Typography') {
+       // Update all slides that are set to Custom
+       setSlides(prev => prev.map(s => {
+         if (s.fontPair.name === 'Custom') {
+           return {
+             ...s,
+             fontPair: {
+               name: 'Custom',
+               title: customTitleFont,
+               body: customBodyFont
+             }
+           }
+         }
+         return s;
+       }));
+    }
+  }, [customTitleFont, customBodyFont, selectedFontPairName]);
 
   const handleParaphrase = async (id: string, element: 'title' | 'content') => {
      const slide = slides.find(s => s.id === id);
@@ -387,24 +464,12 @@ const App: React.FC = () => {
   };
 
   const onEmojiClick = (emojiData: EmojiClickData) => {
-    // Context Aware Emoji Insertion
-    if (selectedSlideId && (selectedElement === 'title' || selectedElement === 'content')) {
-       // Insert into slide text (Fallback to append, as contentEditable selection tracking is complex)
-       const element = selectedElement as 'title' | 'content';
-       setSlides(prev => prev.map(s => {
-         if (s.id === selectedSlideId) {
-           return { ...s, [element]: s[element] + emojiData.emoji }; 
-         }
-         return s;
-       }));
-    } else {
-       // Insert into chat at cursor position
-       const currentPos = cursorPosition ?? chatInput.length;
-       const newText = chatInput.slice(0, currentPos) + emojiData.emoji + chatInput.slice(currentPos);
-       setChatInput(newText);
-       setCursorPosition(currentPos + emojiData.emoji.length);
-    }
-    setShowEmojiPicker(false);
+     // Insert into chat at cursor position
+     const currentPos = cursorPosition ?? chatInput.length;
+     const newText = chatInput.slice(0, currentPos) + emojiData.emoji + chatInput.slice(currentPos);
+     setChatInput(newText);
+     setCursorPosition(currentPos + emojiData.emoji.length);
+     setShowEmojiPicker(false);
   };
 
   const handleChatSubmit = async (e: React.FormEvent) => {
@@ -787,7 +852,7 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              {/* NEW: TYPOGRAPHY SELECTOR */}
+              {/* TYPOGRAPHY SELECTOR */}
               <div className="space-y-2">
                 <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   <TypeIcon className="w-4 h-4 text-blue-600" />
@@ -805,9 +870,130 @@ const App: React.FC = () => {
                         {font.name} ({font.title.split(',')[0].replace(/'/g, '')} + {font.body.split(',')[0].replace(/'/g, '')})
                       </option>
                     ))}
+                    <option value="Custom Typography">Custom Typography</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
+
+                {selectedFontPairName === 'Custom Typography' && (
+                   <div className="grid grid-cols-2 gap-2 mt-2 animate-in fade-in slide-in-from-top-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-gray-500">Title Font</label>
+                        <select 
+                          value={customTitleFont} 
+                          onChange={(e) => setCustomTitleFont(e.target.value)}
+                          className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs"
+                        >
+                          {AVAILABLE_FONTS.map(f => (
+                            <option key={f.name} value={f.value}>{f.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-gray-500">Body Font</label>
+                        <select 
+                          value={customBodyFont} 
+                          onChange={(e) => setCustomBodyFont(e.target.value)}
+                          className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs"
+                        >
+                          {AVAILABLE_FONTS.map(f => (
+                            <option key={f.name} value={f.value}>{f.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                   </div>
+                )}
+              </div>
+
+              {/* CUSTOM PALETTE SELECTOR WITH VISUAL PREVIEW */}
+              <div className="space-y-2">
+                 <div className="flex items-center justify-between">
+                    <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                      <PaletteIcon className="w-4 h-4 text-blue-600" />
+                      Color Palette
+                    </label>
+                 </div>
+                 
+                 <div className="relative">
+                    <button
+                      onClick={() => setIsPaletteDropdownOpen(!isPaletteDropdownOpen)}
+                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all text-left"
+                      disabled={isGenerating}
+                    >
+                       <div className="flex items-center gap-3">
+                         {/* Visual Preview of Currently Selected Colors */}
+                         <div className="flex -space-x-1 shrink-0">
+                             <div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: palette.background }} />
+                             <div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: palette.text }} />
+                             <div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: palette.accent }} />
+                         </div>
+                         <span className="text-sm text-gray-700 font-medium truncate">{palettePresetName}</span>
+                       </div>
+                       <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isPaletteDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {isPaletteDropdownOpen && (
+                      <div className="absolute top-full left-0 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto p-1 animate-in fade-in zoom-in-95 duration-200">
+                         {PALETTE_PRESETS.map((preset) => (
+                           <button
+                             key={preset.name}
+                             onClick={() => handlePalettePresetChange(preset.name)}
+                             className="w-full p-2 flex items-center gap-3 hover:bg-gray-50 rounded-lg transition-colors text-left group/item"
+                           >
+                              <div className="flex -space-x-1 shrink-0">
+                                {preset.palette ? (
+                                   <>
+                                     <div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: preset.palette.background }} />
+                                     <div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: preset.palette.text }} />
+                                     <div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: preset.palette.accent }} />
+                                   </>
+                                ) : (
+                                   <div className="w-4 h-4 rounded-full border border-gray-200 bg-gradient-to-br from-red-400 to-blue-500" />
+                                )}
+                              </div>
+                              <span className={`text-sm flex-1 ${palettePresetName === preset.name ? 'font-bold text-blue-600' : 'text-gray-700 group-hover/item:text-gray-900'}`}>
+                                {preset.name}
+                              </span>
+                              {palettePresetName === preset.name && <Check className="w-3 h-3 text-blue-600" />}
+                           </button>
+                         ))}
+                      </div>
+                    )}
+                    
+                    {/* Transparent backdrop to close dropdown on click outside */}
+                    {isPaletteDropdownOpen && (
+                      <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsPaletteDropdownOpen(false)} />
+                    )}
+                 </div>
+
+                 {/* Custom Colors - Only show if Custom is selected */}
+                 {palettePresetName === 'Custom Palette' && (
+                   <div className="grid grid-cols-2 gap-4 mt-3 animate-in fade-in slide-in-from-top-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                     {(Object.keys(palette) as Array<keyof Palette>).map((key) => (
+                        <div key={key} className="flex flex-col gap-1 group/palette relative">
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="text-[10px] uppercase font-bold text-gray-400">{key}</span>
+                            <div className="relative group/tooltip">
+                              <Info className="w-3 h-3 text-gray-300 hover:text-blue-500 cursor-help" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-gray-800 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity z-50 text-center shadow-lg">
+                                {getPaletteTooltip(key)}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-800"></div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm">
+                            <input 
+                              type="color" 
+                              value={palette[key]} 
+                              onChange={(e) => setPalette(prev => ({...prev, [key]: e.target.value}))}
+                              className="w-6 h-6 rounded cursor-pointer border-none bg-transparent"
+                            />
+                            <span className="text-xs text-gray-600 font-mono">{palette[key]}</span>
+                          </div>
+                        </div>
+                     ))}
+                   </div>
+                 )}
               </div>
 
               <button
@@ -824,37 +1010,9 @@ const App: React.FC = () => {
               </button>
             </div>
 
+            {/* Bottom Section - Empty since Palette Moved */}
             <div className="space-y-4 pt-4 border-t border-gray-100">
-               <div className="flex items-center justify-between cursor-pointer" onClick={() => setShowPalette(!showPalette)}>
-                  <span className="text-sm font-semibold text-gray-700">Color Palette</span>
-                  <PaletteIcon className="w-4 h-4 text-gray-400" />
-               </div>
-               
-               <div className={`grid grid-cols-2 gap-4 transition-all duration-300 ${showPalette ? 'opacity-100' : 'hidden opacity-0'}`}>
-                 {(Object.keys(palette) as Array<keyof Palette>).map((key) => (
-                    <div key={key} className="flex flex-col gap-1 group/palette relative">
-                      <div className="flex items-center gap-1 mb-1">
-                        <span className="text-[10px] uppercase font-bold text-gray-400">{key}</span>
-                        <div className="relative group/tooltip">
-                          <Info className="w-3 h-3 text-gray-300 hover:text-blue-500 cursor-help" />
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-gray-800 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity z-50 text-center shadow-lg">
-                            {getPaletteTooltip(key)}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-800"></div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
-                        <input 
-                          type="color" 
-                          value={palette[key]} 
-                          onChange={(e) => setPalette(prev => ({...prev, [key]: e.target.value}))}
-                          className="w-6 h-6 rounded cursor-pointer border-none bg-transparent"
-                        />
-                        <span className="text-xs text-gray-600 font-mono">{palette[key]}</span>
-                      </div>
-                    </div>
-                 ))}
-               </div>
+               {/* Could add other footer items here if needed */}
             </div>
           </div>
         ) : (
@@ -933,22 +1091,16 @@ const App: React.FC = () => {
 
                 {/* Text Editing Tools (Paraphrase & Emoji for Text) */}
                 {(selectedElement === 'title' || selectedElement === 'content') && (
-                   <div className="grid grid-cols-2 gap-2 mb-3">
+                   <div className="grid grid-cols-1 gap-2 mb-3">
                       <button
                         onClick={() => handleParaphrase(currentSlide.id, selectedElement)}
                         disabled={isGenerating}
-                        className="flex items-center justify-center gap-2 p-2 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold hover:bg-purple-100 border border-purple-100 transition-colors"
+                        className="flex items-center justify-center gap-2 p-2.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold hover:bg-purple-100 border border-purple-100 transition-colors"
                       >
                          <Wand2 className="w-3.5 h-3.5" /> 
-                         AI Rewrite
+                         AI Rewrite Text
                       </button>
-                      <button
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        className={`flex items-center justify-center gap-2 p-2 rounded-lg text-xs font-semibold border transition-colors ${showEmojiPicker ? 'bg-blue-100 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'}`}
-                      >
-                         <Smile className="w-3.5 h-3.5" />
-                         Insert Emoji
-                      </button>
+                      {/* Removed Duplicate Emoji Button */}
                    </div>
                 )}
 
@@ -1008,6 +1160,14 @@ const App: React.FC = () => {
 
             {/* Chat Input Area */}
             <div className="p-4 bg-white border-t border-gray-200 min-w-[24rem]">
+                {/* Tooltip for Chat */}
+                <div className="flex items-center gap-1.5 mb-2 px-1 opacity-80 hover:opacity-100 transition-opacity cursor-help">
+                   <HelpCircle className="w-3 h-3 text-blue-500" />
+                   <p className="text-[10px] text-gray-500 font-medium">
+                      Select any element (Text or Image) on the slide and type here to change it.
+                   </p>
+                </div>
+
                 {pendingImage && (
                   <div className="mb-3 flex items-center gap-2 bg-blue-50 p-2 rounded-lg border border-blue-100 animate-in slide-in-from-bottom-2">
                       <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0 bg-white">
