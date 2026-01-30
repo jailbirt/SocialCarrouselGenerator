@@ -313,7 +313,9 @@ const AVAILABLE_FONTS = [
   { name: 'Playfair Display', value: "'Playfair Display', serif" },
   { name: 'Roboto', value: "'Roboto', sans-serif" },
   { name: 'Source Sans 3', value: "'Source Sans 3', sans-serif" },
-  { name: 'Space Grotesk', value: "'Space Grotesk', sans-serif" }
+  { name: 'Space Grotesk', value: "'Space Grotesk', sans-serif" },
+  { name: 'Montserrat', value: "'Montserrat', sans-serif" },
+  { name: 'Open Sans', value: "'Open Sans', sans-serif" }
 ];
 
 const FONT_PAIRS: FontPair[] = [
@@ -322,6 +324,7 @@ const FONT_PAIRS: FontPair[] = [
   { name: 'Elegant', title: "'Playfair Display', serif", body: "'Lato', sans-serif" },
   { name: 'Bold', title: "'Oswald', sans-serif", body: "'Roboto', sans-serif" },
   { name: 'Classic', title: "'Merriweather', serif", body: "'Source Sans 3', sans-serif" },
+  { name: 'Modern Clean', title: "'Montserrat', sans-serif", body: "'Open Sans', sans-serif" },
 ];
 
 const PALETTE_PRESETS = [
