@@ -80,20 +80,16 @@ const InstagramIcon = ({ className }: { className?: string }) => (
 
 const STORAGE_KEY = 'carrousel_generator_state_v1';
 
-// --- CONFIGURATION FOR SOCIAL GROWTH ---
-// REPLACE THESE URLs WITH YOUR OWN PROFILES AND PINNED POSTS
+// --- CONFIGURATION ---
 const SOCIAL_CONFIG = {
   linkedinProfile: "https://www.linkedin.com/in/javierailbirt/", 
   instagramProfile: "https://www.instagram.com/javier_ailbirt/",
-  // Post where you want them to comment (e.g. pinned post) - Using profile as placeholder for now
   linkedinPost: "https://www.linkedin.com/in/javierailbirt/", 
-  // Leave empty to hide the Instagram Comment button until you have a specific post
   instagramPost: "" 
 };
 
-// --- TRANSLATIONS CONFIGURATION (SEO OPTIMIZED) ---
+// --- TRANSLATIONS ---
 const UI_TEXT = {
-  // ... (Same text map as before)
   es: {
     appTitle: "Generador de Carruseles IA",
     aiMode: "Generación IA",
@@ -151,7 +147,6 @@ const UI_TEXT = {
     resetConfirmText: "Esta acción borrará tu trabajo actual.",
     cancel: "Cancelar",
     confirm: "Sí, Crear Nuevo",
-    // Social Modal
     growthTitle: "¡Tu Carrusel se está creando!",
     growthSubtitle: "Mientras la IA trabaja, ¿me apoyas con un clic?",
     actionFollow: "Sígueme para más",
@@ -290,9 +285,9 @@ const UI_TEXT = {
 };
 
 const INITIAL_PALETTE: Palette = {
-  background: '#1a1a1a', // Dark background by default to show off the feature
-  text: '#ffffff',       // White text
-  accent: '#3b82f6'      // Blue accent
+  background: '#1a1a1a', 
+  text: '#ffffff',       
+  accent: '#3b82f6'      
 };
 
 // ... (Other constants remain the same)
@@ -560,11 +555,11 @@ const App: React.FC = () => {
   const [showInlineEmojiPicker, setShowInlineEmojiPicker] = useState(false);
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [showGrowthModal, setShowGrowthModal] = useState(false); // New Growth Modal State
+  const [showGrowthModal, setShowGrowthModal] = useState(false); 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
-  // ... (Refs remain the same)
+  // Refs
   const step0Ref = useRef<HTMLDivElement>(null);
   const step1Ref = useRef<HTMLDivElement>(null);
   const step2Ref = useRef<HTMLDivElement>(null);
@@ -579,13 +574,14 @@ const App: React.FC = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
+  const inlineEmojiBtnRef = useRef<HTMLButtonElement>(null);
 
   // Helper for translation
   const t = (key: keyof typeof UI_TEXT['es']) => {
     return UI_TEXT[language][key] || UI_TEXT['es'][key];
   };
 
-  // SEO: Dynamic Document Title
+  // ... (SEO, LocalStorage Effects remain same) ...
   useEffect(() => {
     const titles = {
       es: "Generador de Carruseles IA para LinkedIn e Instagram | Crear Online",
@@ -635,6 +631,7 @@ const App: React.FC = () => {
 
   }, [language, topic, contentMode, imageStyle, selectedFontPairName, customTitleFont, customBodyFont, palettePresetName, palette, customStylePrompt, slides, showTour, currentTourStep]);
 
+  // ... (Navigation, Toggle handlers) ...
   const handleNextStep = () => setCurrentTourStep(prev => prev + 1);
   const handlePrevStep = () => setCurrentTourStep(prev => Math.max(0, prev - 1));
   const handleSkipTour = () => setShowTour(false);
@@ -785,8 +782,6 @@ const App: React.FC = () => {
       setSlides(newSlides);
       if (newSlides.length > 0) setSelectedSlideId(newSlides[0].id);
 
-      // --- TRIGGER GROWTH MODAL HERE ---
-      // Show modal after structure is done, while images generate
       setTimeout(() => setShowGrowthModal(true), 1500);
 
       setLoadingMessage(t('loadingImages'));
@@ -824,6 +819,7 @@ const App: React.FC = () => {
     }
   };
 
+  // ... (Regenerate, Update handlers remain same) ...
   const handleRegenerateImage = async (e: React.MouseEvent, slideId: string) => {
     e.stopPropagation();
     const slide = slides.find(s => s.id === slideId);
@@ -912,7 +908,7 @@ const App: React.FC = () => {
     setSlides(prev => prev.map(s => s.id === id ? { ...s, [element === 'title' ? 'titleFontSize' : 'contentFontSize']: size } : s));
   };
 
-  // ... (File processing and Chat Handlers remain same)
+  // ... (File processing and Chat Handlers) ...
   const processFile = (file: File) => {
     if (!file.type.startsWith('image/')) return;
     const reader = new FileReader();
@@ -950,6 +946,7 @@ const App: React.FC = () => {
       setShowInlineEmojiPicker(false);
   };
 
+  // ... (Chat Submit logic) ...
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!chatInput.trim() && !pendingImage) || isGenerating) return;
@@ -1159,94 +1156,15 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
       
-      {/* ... (Modals remain same) ... */}
+      {/* ... (Modals) ... */}
       {showGrowthModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-in zoom-in-95 duration-300 relative border-4 border-blue-50">
-             {/* Close Button */}
-             <button 
-               onClick={() => setShowGrowthModal(false)}
-               className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 text-gray-400 transition-colors"
-             >
-               <X className="w-5 h-5" />
-             </button>
-
-             <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-gradient-to-tr from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce shadow-inner">
-                   <Sparkles className="w-8 h-8 text-blue-600" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('growthTitle')}</h3>
-                <p className="text-gray-500 font-medium">{t('growthSubtitle')}</p>
-             </div>
-
-             <div className="grid grid-cols-2 gap-4 mb-6">
-                {/* Follow Section */}
-                <div className="flex flex-col gap-2">
-                   <a 
-                     href={SOCIAL_CONFIG.linkedinProfile} 
-                     target="_blank" 
-                     rel="noopener noreferrer"
-                     className="flex items-center justify-center gap-2 p-3 bg-[#0077B5] text-white rounded-xl font-bold text-sm hover:bg-[#006396] transition-transform hover:scale-105 shadow-md shadow-blue-200"
-                   >
-                      <LinkedInIcon className="w-5 h-5" /> LinkedIn
-                   </a>
-                   <a 
-                     href={SOCIAL_CONFIG.instagramProfile} 
-                     target="_blank" 
-                     rel="noopener noreferrer"
-                     className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold text-sm hover:opacity-90 transition-transform hover:scale-105 shadow-md shadow-pink-200"
-                   >
-                      <InstagramIcon className="w-5 h-5" /> Instagram
-                   </a>
-                   <p className="text-[10px] text-center text-gray-400 font-bold uppercase tracking-wider mt-1">{t('actionFollow')}</p>
-                </div>
-
-                {/* Comment Section */}
-                <div className="flex flex-col gap-2">
-                   {SOCIAL_CONFIG.linkedinPost && (
-                     <a 
-                       href={SOCIAL_CONFIG.linkedinPost} 
-                       target="_blank" 
-                       rel="noopener noreferrer"
-                       className="flex-1 flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all group"
-                     >
-                        <MessageSquare className="w-6 h-6 text-gray-400 group-hover:text-blue-500" />
-                        <span className="text-xs font-bold leading-tight text-center">{t('actionComment')}</span>
-                     </a>
-                   )}
-                   
-                   {/* Conditional Instagram Post Button - Hidden if empty string */}
-                   {SOCIAL_CONFIG.instagramPost && (
-                     <a 
-                       href={SOCIAL_CONFIG.instagramPost} 
-                       target="_blank" 
-                       rel="noopener noreferrer"
-                       className="flex-1 flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-pink-400 hover:text-pink-600 hover:bg-pink-50 transition-all group"
-                     >
-                        <Heart className="w-6 h-6 text-gray-400 group-hover:text-pink-500" />
-                        <span className="text-xs font-bold leading-tight text-center">{t('actionComment')}</span>
-                     </a>
-                   )}
-                   
-                   <p className="text-[10px] text-center text-gray-400 font-bold uppercase tracking-wider mt-1">
-                      {SOCIAL_CONFIG.instagramPost ? "Posts Destacados" : "LinkedIn Post"}
-                   </p>
-                </div>
-             </div>
-
-             <div className="bg-blue-50 p-3 rounded-lg flex items-start gap-3 mb-6">
-                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-800 leading-relaxed">
-                  {t('commentHint')}
-                </p>
-             </div>
-
-             <button 
-               onClick={() => setShowGrowthModal(false)}
-               className="w-full py-3 text-gray-500 font-semibold hover:text-gray-900 transition-colors text-sm"
-             >
-               {t('actionSkip')}
-             </button>
+             <button onClick={() => setShowGrowthModal(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 text-gray-400 transition-colors"><X className="w-5 h-5" /></button>
+             <div className="text-center mb-6"><div className="w-16 h-16 bg-gradient-to-tr from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce shadow-inner"><Sparkles className="w-8 h-8 text-blue-600" /></div><h3 className="text-2xl font-bold text-gray-900 mb-2">{t('growthTitle')}</h3><p className="text-gray-500 font-medium">{t('growthSubtitle')}</p></div>
+             <div className="grid grid-cols-2 gap-4 mb-6"><div className="flex flex-col gap-2"><a href={SOCIAL_CONFIG.linkedinProfile} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 p-3 bg-[#0077B5] text-white rounded-xl font-bold text-sm hover:bg-[#006396] transition-transform hover:scale-105 shadow-md shadow-blue-200"><LinkedInIcon className="w-5 h-5" /> LinkedIn</a><a href={SOCIAL_CONFIG.instagramProfile} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold text-sm hover:opacity-90 transition-transform hover:scale-105 shadow-md shadow-pink-200"><InstagramIcon className="w-5 h-5" /> Instagram</a><p className="text-[10px] text-center text-gray-400 font-bold uppercase tracking-wider mt-1">{t('actionFollow')}</p></div><div className="flex flex-col gap-2">{SOCIAL_CONFIG.linkedinPost && (<a href={SOCIAL_CONFIG.linkedinPost} target="_blank" rel="noopener noreferrer" className="flex-1 flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all group"><MessageSquare className="w-6 h-6 text-gray-400 group-hover:text-blue-500" /><span className="text-xs font-bold leading-tight text-center">{t('actionComment')}</span></a>)}{SOCIAL_CONFIG.instagramPost && (<a href={SOCIAL_CONFIG.instagramPost} target="_blank" rel="noopener noreferrer" className="flex-1 flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-pink-400 hover:text-pink-600 hover:bg-pink-50 transition-all group"><Heart className="w-6 h-6 text-gray-400 group-hover:text-pink-500" /><span className="text-xs font-bold leading-tight text-center">{t('actionComment')}</span></a>)}<p className="text-[10px] text-center text-gray-400 font-bold uppercase tracking-wider mt-1">{SOCIAL_CONFIG.instagramPost ? "Posts Destacados" : "LinkedIn Post"}</p></div></div>
+             <div className="bg-blue-50 p-3 rounded-lg flex items-start gap-3 mb-6"><Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" /><p className="text-xs text-blue-800 leading-relaxed">{t('commentHint')}</p></div>
+             <button onClick={() => setShowGrowthModal(false)} className="w-full py-3 text-gray-500 font-semibold hover:text-gray-900 transition-colors text-sm">{t('actionSkip')}</button>
            </div>
         </div>
       )}
@@ -1256,122 +1174,25 @@ const App: React.FC = () => {
         className={`bg-white border-r border-gray-200 flex flex-col z-30 transition-all duration-300 relative shadow-xl overflow-hidden
           ${isSidebarOpen ? 'w-96 opacity-100' : 'w-0 opacity-0'}`}
       >
-        {/* ... (Sidebar Header, Palette, Generate Button logic remains same) ... */}
         <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 min-w-[24rem]">
-          <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2 whitespace-nowrap overflow-hidden text-ellipsis">
-            <Sparkles className="text-blue-600 w-5 h-5 flex-shrink-0" />
-            {t('appTitle')}
-          </h1>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button 
-              onClick={handleToggleTour}
-              className={`p-1.5 rounded-full transition-colors ${showTour ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}
-              title={showTour ? "Close Guided Tour" : "Start Guided Tour"}
-            >
-              {showTour ? <X className="w-4 h-4" /> : <CircleHelp className="w-4 h-4" />}
-            </button>
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded text-[10px] font-medium text-gray-500 whitespace-nowrap" title="Your settings are saved automatically">
-               {saveStatus === 'saving' && <Loader2 className="w-3 h-3 animate-spin" />}
-               {saveStatus === 'saved' && <Check className="w-3 h-3 text-green-500" />}
-               {saveStatus === 'error' && <AlertCircle className="w-3 h-3 text-red-500" />}
-               {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Error'}
-            </div>
-          </div>
+          <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2 whitespace-nowrap overflow-hidden text-ellipsis"><Sparkles className="text-blue-600 w-5 h-5 flex-shrink-0" />{t('appTitle')}</h1>
+          <div className="flex items-center gap-2 flex-shrink-0"><button onClick={handleToggleTour} className={`p-1.5 rounded-full transition-colors ${showTour ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`} title={showTour ? "Close Guided Tour" : "Start Guided Tour"}>{showTour ? <X className="w-4 h-4" /> : <CircleHelp className="w-4 h-4" />}</button><div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded text-[10px] font-medium text-gray-500 whitespace-nowrap" title="Your settings are saved automatically">{saveStatus === 'saving' && <Loader2 className="w-3 h-3 animate-spin" />}{saveStatus === 'saved' && <Check className="w-3 h-3 text-green-500" />}{saveStatus === 'error' && <AlertCircle className="w-3 h-3 text-red-500" />}{saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Error'}</div></div>
         </div>
 
         {slides.length === 0 ? (
           <div className="flex-1 overflow-y-auto p-6 space-y-8 animate-in fade-in duration-300 min-w-[24rem]">
+            {/* ... (Initial Inputs: Content Mode, Topic, Style, Typography, Palette, Generate) ... */}
             <div className="space-y-4 relative">
-              {/* ... (Content Mode, Topic, Style, Typography - Same as before) ... */}
-              
               <div className="flex items-center p-1 bg-gray-100 rounded-lg relative">
-                <div className="relative group/mode flex-1">
-                   <button onClick={() => setContentMode('generate')} className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-md transition-all ${contentMode === 'generate' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Brain className="w-3.5 h-3.5" />{t('aiMode')}</button>
-                </div>
-                <div className="relative group/mode flex-1">
-                  <button onClick={() => setContentMode('literal')} className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-md transition-all ${contentMode === 'literal' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><FileText className="w-3.5 h-3.5" />{t('literalMode')}</button>
-                </div>
+                <div className="relative group/mode flex-1"><button onClick={() => setContentMode('generate')} className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-md transition-all ${contentMode === 'generate' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Brain className="w-3.5 h-3.5" />{t('aiMode')}</button></div>
+                <div className="relative group/mode flex-1"><button onClick={() => setContentMode('literal')} className={`w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-md transition-all ${contentMode === 'literal' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><FileText className="w-3.5 h-3.5" />{t('literalMode')}</button></div>
               </div>
-
-              <div ref={step0Ref} className="relative">
-                <label className="text-sm font-bold text-gray-800 block">{t('topicLabel')}<HelpTooltip index={0} title={t('tourStep1Title')} content={t('tourStep1Content')} /></label>
-                <textarea className={`w-full p-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:outline-none resize-none h-32 transition-all text-sm leading-relaxed ${contentMode === 'generate' ? 'focus:ring-blue-500' : 'focus:ring-purple-500'}`} placeholder={contentMode === 'generate' ? t('topicPlaceholder') : t('literalPlaceholder')} value={topic} onChange={(e) => setTopic(e.target.value)} disabled={isGenerating} />
-                {showTour && currentTourStep === 0 && (<TourPopover step={0} totalSteps={9} title={t('tourStep1Title')} content={t('tourStep1Content')} onNext={handleNextStep} onPrev={handlePrevStep} onSkip={handleSkipTour} position="right" anchorRef={step0Ref} />)}
-              </div>
+              <div ref={step0Ref} className="relative"><label className="text-sm font-bold text-gray-800 block">{t('topicLabel')}<HelpTooltip index={0} title={t('tourStep1Title')} content={t('tourStep1Content')} /></label><textarea className={`w-full p-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:outline-none resize-none h-32 transition-all text-sm leading-relaxed ${contentMode === 'generate' ? 'focus:ring-blue-500' : 'focus:ring-purple-500'}`} placeholder={contentMode === 'generate' ? t('topicPlaceholder') : t('literalPlaceholder')} value={topic} onChange={(e) => setTopic(e.target.value)} disabled={isGenerating} />{showTour && currentTourStep === 0 && (<TourPopover step={0} totalSteps={9} title={t('tourStep1Title')} content={t('tourStep1Content')} onNext={handleNextStep} onPrev={handlePrevStep} onSkip={handleSkipTour} position="right" anchorRef={step0Ref} />)}</div>
               {contentMode === 'literal' && (<p className="text-xs text-purple-600 mt-1 flex items-center gap-1"><Info className="w-3 h-3" /> {t('literalHint')}</p>)}
-
-              <div ref={step1Ref} className="space-y-2 relative">
-                <label className="text-sm font-bold text-gray-800 flex items-center gap-2"><Paintbrush className="w-4 h-4 text-blue-600" />{t('visualStyle')}<HelpTooltip index={1} title={t('tourStep2Title')} content={t('tourStep2Content')} /></label>
-                <div className="relative">
-                  <select value={imageStyle} onChange={(e) => setImageStyle(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm appearance-none cursor-pointer" disabled={isGenerating}>
-                    {STYLE_PRESETS.map(style => (<option key={style} value={style}>{style}</option>))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                </div>
-                {imageStyle === 'Custom Style' && (<div className="animate-in fade-in slide-in-from-top-2 duration-300"><div className="flex items-center gap-2 mt-2 mb-1"><PenTool className="w-3 h-3 text-purple-600" /><span className="text-xs font-semibold text-purple-700">{t('customStyleLabel')}</span></div><textarea value={customStylePrompt} onChange={(e) => setCustomStylePrompt(e.target.value)} className="w-full p-3 bg-purple-50 border border-purple-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none text-sm resize-none h-20" placeholder={t('customStylePlaceholder')} disabled={isGenerating} /></div>)}
-                {showTour && currentTourStep === 1 && (<TourPopover step={1} totalSteps={9} title={t('tourStep2Title')} content={t('tourStep2Content')} onNext={handleNextStep} onPrev={handlePrevStep} onSkip={handleSkipTour} position="right" anchorRef={step1Ref} />)}
-              </div>
-
-              <div ref={step2Ref} className="space-y-2 relative">
-                <label className="text-sm font-bold text-gray-800 flex items-center gap-2"><TypeIcon className="w-4 h-4 text-blue-600" />{t('typography')}<HelpTooltip index={2} title={t('tourStep3Title')} content={t('tourStep3Content')} /></label>
-                <div className="relative">
-                  <select value={selectedFontPairName} onChange={(e) => setSelectedFontPairName(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm appearance-none cursor-pointer" disabled={isGenerating}>
-                    {FONT_PAIRS.map(font => (<option key={font.name} value={font.name}>{font.name} ({font.title.split(',')[0].replace(/'/g, '')} + {font.body.split(',')[0].replace(/'/g, '')})</option>))}
-                    <option value="Custom Typography">Custom Typography</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                </div>
-                {selectedFontPairName === 'Custom Typography' && (<div className="grid grid-cols-2 gap-2 mt-2 animate-in fade-in slide-in-from-top-2"><div className="space-y-1"><label className="text-[10px] uppercase font-bold text-gray-500">Title Font</label><select value={customTitleFont} onChange={(e) => setCustomTitleFont(e.target.value)} className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs">{AVAILABLE_FONTS.map(f => (<option key={f.name} value={f.value}>{f.name}</option>))}</select></div><div className="space-y-1"><label className="text-[10px] uppercase font-bold text-gray-500">Body Font</label><select value={customBodyFont} onChange={(e) => setCustomBodyFont(e.target.value)} className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs">{AVAILABLE_FONTS.map(f => (<option key={f.name} value={f.value}>{f.name}</option>))}</select></div></div>)}
-                {showTour && currentTourStep === 2 && (<TourPopover step={2} totalSteps={9} title={t('tourStep3Title')} content={t('tourStep3Content')} onNext={handleNextStep} onPrev={handlePrevStep} onSkip={handleSkipTour} position="right" anchorRef={step2Ref} />)}
-              </div>
-
-              {/* Step 4: Palette */}
-              <div ref={step3Ref} className="space-y-2 relative">
-                 <div className="flex items-center justify-between"><label className="text-sm font-bold text-gray-800 flex items-center gap-2"><PaletteIcon className="w-4 h-4 text-blue-600" />{t('palette')}<HelpTooltip index={3} title={t('tourStep4Title')} content={t('tourStep4Content')} /></label></div>
-                 <div className="relative">
-                    <button onClick={() => setIsPaletteDropdownOpen(!isPaletteDropdownOpen)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all text-left" disabled={isGenerating}>
-                       <div className="flex items-center gap-3"><div className="flex -space-x-1 shrink-0"><div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: palette.background }} /><div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: palette.text }} /><div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: palette.accent }} /></div><span className="text-sm text-gray-700 font-medium truncate">{palettePresetName}</span></div>
-                       <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isPaletteDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {isPaletteDropdownOpen && (<div className="absolute top-full left-0 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto p-1 animate-in fade-in zoom-in-95 duration-200">{PALETTE_PRESETS.map((preset) => (<button key={preset.name} onClick={() => handlePalettePresetChange(preset.name)} className="w-full p-2 flex items-center gap-3 hover:bg-gray-50 rounded-lg transition-colors text-left group/item"><div className="flex -space-x-1 shrink-0">{preset.palette ? (<><div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: preset.palette.background }} /><div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: preset.palette.text }} /><div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: preset.palette.accent }} /></>) : (<div className="w-4 h-4 rounded-full border border-gray-200 bg-gradient-to-br from-red-400 to-blue-500" />)}</div><span className={`text-sm flex-1 ${palettePresetName === preset.name ? 'font-bold text-blue-600' : 'text-gray-700 group-hover/item:text-gray-900'}`}>{preset.name}</span>{palettePresetName === preset.name && <Check className="w-3 h-3 text-blue-600" />}</button>))}</div>)}
-                    {isPaletteDropdownOpen && (<div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsPaletteDropdownOpen(false)} />)}
-                 </div>
-
-                 {/* BUG FIX: EDITABLE CUSTOM PALETTE */}
-                 {palettePresetName === 'Custom Palette' && (
-                   <div className="grid grid-cols-2 gap-4 mt-3 animate-in fade-in slide-in-from-top-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
-                     {(Object.keys(palette) as Array<keyof Palette>).map((key) => (
-                        <div key={key} className="flex flex-col gap-1 group/palette relative">
-                          <div className="flex items-center gap-1 mb-1">
-                            <span className="text-[10px] uppercase font-bold text-gray-400">{key}</span>
-                            <div className="relative group/tooltip">
-                              <Info className="w-3 h-3 text-gray-300 hover:text-blue-500 cursor-help" />
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-gray-800 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity z-50 text-center shadow-lg">{getPaletteTooltip(key)}<div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-800"></div></div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm">
-                            <input type="color" value={palette[key]} onChange={(e) => setPalette(prev => ({...prev, [key]: e.target.value}))} className="w-6 h-6 rounded cursor-pointer border-none bg-transparent" />
-                            <input 
-                              type="text" 
-                              value={palette[key]} 
-                              onChange={(e) => setPalette(prev => ({...prev, [key]: e.target.value}))}
-                              className="text-xs text-gray-600 font-mono border-none focus:outline-none w-16 bg-transparent"
-                            />
-                          </div>
-                        </div>
-                     ))}
-                   </div>
-                 )}
-                 {showTour && currentTourStep === 3 && (<TourPopover step={3} totalSteps={9} title={t('tourStep4Title')} content={t('tourStep4Content')} onNext={handleNextStep} onPrev={handlePrevStep} onSkip={handleSkipTour} position="right" anchorRef={step3Ref} />)}
-              </div>
-
-              {/* Step 5: Generate */}
-              <div ref={step4Ref} className="relative">
-                <button onClick={handleGenerate} disabled={!topic.trim() || isGenerating || (imageStyle === 'Custom Style' && !customStylePrompt.trim())} className={`w-full py-3.5 text-white rounded-xl font-semibold transition-all shadow-lg flex items-center justify-center gap-2 mt-4 relative group ${contentMode === 'generate' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'} disabled:opacity-50 disabled:cursor-not-allowed`}>
-                  {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles className="w-5 h-5" />}{contentMode === 'generate' ? t('generateBtn') : t('formatBtn')}<div onClick={(e) => e.stopPropagation()} className="absolute right-4 top-1/2 -translate-y-1/2"><HelpTooltip index={4} title={t('tourStep5Title')} content={t('tourStep5Content')} /></div>
-                </button>
-                {showTour && currentTourStep === 4 && (<TourPopover step={4} totalSteps={9} title={t('tourStep5Title')} content={t('tourStep5Content')} onNext={handleNextStep} onPrev={handlePrevStep} onSkip={handleSkipTour} position="top" anchorRef={step4Ref} />)}
-              </div>
+              <div ref={step1Ref} className="space-y-2 relative"><label className="text-sm font-bold text-gray-800 flex items-center gap-2"><Paintbrush className="w-4 h-4 text-blue-600" />{t('visualStyle')}<HelpTooltip index={1} title={t('tourStep2Title')} content={t('tourStep2Content')} /></label><div className="relative"><select value={imageStyle} onChange={(e) => setImageStyle(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm appearance-none cursor-pointer" disabled={isGenerating}>{STYLE_PRESETS.map(style => (<option key={style} value={style}>{style}</option>))}</select><ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" /></div>{imageStyle === 'Custom Style' && (<div className="animate-in fade-in slide-in-from-top-2 duration-300"><div className="flex items-center gap-2 mt-2 mb-1"><PenTool className="w-3 h-3 text-purple-600" /><span className="text-xs font-semibold text-purple-700">{t('customStyleLabel')}</span></div><textarea value={customStylePrompt} onChange={(e) => setCustomStylePrompt(e.target.value)} className="w-full p-3 bg-purple-50 border border-purple-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none text-sm resize-none h-20" placeholder={t('customStylePlaceholder')} disabled={isGenerating} /></div>)}{showTour && currentTourStep === 1 && (<TourPopover step={1} totalSteps={9} title={t('tourStep2Title')} content={t('tourStep2Content')} onNext={handleNextStep} onPrev={handlePrevStep} onSkip={handleSkipTour} position="right" anchorRef={step1Ref} />)}</div>
+              <div ref={step2Ref} className="space-y-2 relative"><label className="text-sm font-bold text-gray-800 flex items-center gap-2"><TypeIcon className="w-4 h-4 text-blue-600" />{t('typography')}<HelpTooltip index={2} title={t('tourStep3Title')} content={t('tourStep3Content')} /></label><div className="relative"><select value={selectedFontPairName} onChange={(e) => setSelectedFontPairName(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm appearance-none cursor-pointer" disabled={isGenerating}>{FONT_PAIRS.map(font => (<option key={font.name} value={font.name}>{font.name} ({font.title.split(',')[0].replace(/'/g, '')} + {font.body.split(',')[0].replace(/'/g, '')})</option>))}<option value="Custom Typography">Custom Typography</option></select><ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" /></div>{selectedFontPairName === 'Custom Typography' && (<div className="grid grid-cols-2 gap-2 mt-2 animate-in fade-in slide-in-from-top-2"><div className="space-y-1"><label className="text-[10px] uppercase font-bold text-gray-500">Title Font</label><select value={customTitleFont} onChange={(e) => setCustomTitleFont(e.target.value)} className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs">{AVAILABLE_FONTS.map(f => (<option key={f.name} value={f.value}>{f.name}</option>))}</select></div><div className="space-y-1"><label className="text-[10px] uppercase font-bold text-gray-500">Body Font</label><select value={customBodyFont} onChange={(e) => setCustomBodyFont(e.target.value)} className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs">{AVAILABLE_FONTS.map(f => (<option key={f.name} value={f.value}>{f.name}</option>))}</select></div></div>)}{showTour && currentTourStep === 2 && (<TourPopover step={2} totalSteps={9} title={t('tourStep3Title')} content={t('tourStep3Content')} onNext={handleNextStep} onPrev={handlePrevStep} onSkip={handleSkipTour} position="right" anchorRef={step2Ref} />)}</div>
+              <div ref={step3Ref} className="space-y-2 relative"><div className="flex items-center justify-between"><label className="text-sm font-bold text-gray-800 flex items-center gap-2"><PaletteIcon className="w-4 h-4 text-blue-600" />{t('palette')}<HelpTooltip index={3} title={t('tourStep4Title')} content={t('tourStep4Content')} /></label></div><div className="relative"><button onClick={() => setIsPaletteDropdownOpen(!isPaletteDropdownOpen)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all text-left" disabled={isGenerating}><div className="flex items-center gap-3"><div className="flex -space-x-1 shrink-0"><div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: palette.background }} /><div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: palette.text }} /><div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: palette.accent }} /></div><span className="text-sm text-gray-700 font-medium truncate">{palettePresetName}</span></div><ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isPaletteDropdownOpen ? 'rotate-180' : ''}`} /></button>{isPaletteDropdownOpen && (<div className="absolute top-full left-0 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto p-1 animate-in fade-in zoom-in-95 duration-200">{PALETTE_PRESETS.map((preset) => (<button key={preset.name} onClick={() => handlePalettePresetChange(preset.name)} className="w-full p-2 flex items-center gap-3 hover:bg-gray-50 rounded-lg transition-colors text-left group/item"><div className="flex -space-x-1 shrink-0">{preset.palette ? (<><div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: preset.palette.background }} /><div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: preset.palette.text }} /><div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: preset.palette.accent }} /></>) : (<div className="w-4 h-4 rounded-full border border-gray-200 bg-gradient-to-br from-red-400 to-blue-500" />)}</div><span className={`text-sm flex-1 ${palettePresetName === preset.name ? 'font-bold text-blue-600' : 'text-gray-700 group-hover/item:text-gray-900'}`}>{preset.name}</span>{palettePresetName === preset.name && <Check className="w-3 h-3 text-blue-600" />}</button>))}</div>)}{isPaletteDropdownOpen && (<div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsPaletteDropdownOpen(false)} />)}</div>{palettePresetName === 'Custom Palette' && (<div className="grid grid-cols-2 gap-4 mt-3 animate-in fade-in slide-in-from-top-2 p-3 bg-gray-50 rounded-xl border border-gray-200">{(Object.keys(palette) as Array<keyof Palette>).map((key) => (<div key={key} className="flex flex-col gap-1 group/palette relative"><div className="flex items-center gap-1 mb-1"><span className="text-[10px] uppercase font-bold text-gray-400">{key}</span><div className="relative group/tooltip"><Info className="w-3 h-3 text-gray-300 hover:text-blue-500 cursor-help" /><div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-gray-800 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity z-50 text-center shadow-lg">{getPaletteTooltip(key)}<div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-800"></div></div></div></div><div className="flex items-center gap-2 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm"><input type="color" value={palette[key]} onChange={(e) => setPalette(prev => ({...prev, [key]: e.target.value}))} className="w-6 h-6 rounded cursor-pointer border-none bg-transparent" /><input type="text" value={palette[key]} onChange={(e) => setPalette(prev => ({...prev, [key]: e.target.value}))} className="text-xs text-gray-600 font-mono border-none focus:outline-none w-16 bg-transparent" /></div></div>))}</div>)}{showTour && currentTourStep === 3 && (<TourPopover step={3} totalSteps={9} title={t('tourStep4Title')} content={t('tourStep4Content')} onNext={handleNextStep} onPrev={handlePrevStep} onSkip={handleSkipTour} position="right" anchorRef={step3Ref} />)}</div>
+              <div ref={step4Ref} className="relative"><button onClick={handleGenerate} disabled={!topic.trim() || isGenerating || (imageStyle === 'Custom Style' && !customStylePrompt.trim())} className={`w-full py-3.5 text-white rounded-xl font-semibold transition-all shadow-lg flex items-center justify-center gap-2 mt-4 relative group ${contentMode === 'generate' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'} disabled:opacity-50 disabled:cursor-not-allowed`}>{isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles className="w-5 h-5" />}{contentMode === 'generate' ? t('generateBtn') : t('formatBtn')}<div onClick={(e) => e.stopPropagation()} className="absolute right-4 top-1/2 -translate-y-1/2"><HelpTooltip index={4} title={t('tourStep5Title')} content={t('tourStep5Content')} /></div></button>{showTour && currentTourStep === 4 && (<TourPopover step={4} totalSteps={9} title={t('tourStep5Title')} content={t('tourStep5Content')} onNext={handleNextStep} onPrev={handlePrevStep} onSkip={handleSkipTour} position="top" anchorRef={step4Ref} />)}</div>
             </div>
             <div className="space-y-4 pt-4 border-t border-gray-100"></div>
           </div>
@@ -1408,7 +1229,37 @@ const App: React.FC = () => {
                 {(selectedElement === 'title' || selectedElement === 'content') && (
                    <div className="grid grid-cols-2 gap-2 mb-3">
                       <div className="relative flex-1 group/tooltip-wrapper"><button onClick={() => handleParaphrase(currentSlide.id, selectedElement)} disabled={isGenerating} className="w-full flex items-center justify-center gap-2 p-2.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold hover:bg-purple-100 border border-purple-100 transition-colors"><Wand2 className="w-3.5 h-3.5" /> {t('aiRewrite')}</button><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto"><HelpTooltip index={8} /></div></div>
-                      <div className="relative flex-1"><div className="relative w-full group/tooltip-wrapper"><button onClick={() => setShowInlineEmojiPicker(!showInlineEmojiPicker)} className="w-full flex items-center justify-center gap-2 p-2.5 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-semibold hover:bg-yellow-100 border border-yellow-100 transition-colors"><Smile className="w-3.5 h-3.5" /> {t('insertEmoji')}</button><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto"><HelpTooltip index={9} /></div></div>{showInlineEmojiPicker && (<div className="absolute top-full right-0 mt-2 z-50 shadow-2xl rounded-xl"><div className="fixed inset-0 z-40" onClick={() => setShowInlineEmojiPicker(false)}></div><div className="relative z-50"><EmojiPicker onEmojiClick={onInlineEmojiClick} theme={Theme.LIGHT} width={280} height={350} previewConfig={{ showPreview: false }} /></div></div>)}</div>
+                      
+                      {/* EMOJI BUTTON WITH REF FOR PORTAL POSITIONING */}
+                      <div className="relative flex-1">
+                        <div className="relative w-full group/tooltip-wrapper">
+                          <button 
+                            ref={inlineEmojiBtnRef}
+                            onClick={() => setShowInlineEmojiPicker(!showInlineEmojiPicker)} 
+                            className="w-full flex items-center justify-center gap-2 p-2.5 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-semibold hover:bg-yellow-100 border border-yellow-100 transition-colors"
+                          >
+                             <Smile className="w-3.5 h-3.5" /> {t('insertEmoji')}
+                          </button>
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto"><HelpTooltip index={9} /></div>
+                        </div>
+                        
+                        {/* EMOJI PICKER IN PORTAL TO AVOID CLIPPING */}
+                        {showInlineEmojiPicker && (
+                          <PortalTooltip 
+                            anchorRef={inlineEmojiBtnRef} 
+                            position="bottom" 
+                            offset={5} 
+                            className="pointer-events-auto z-[9999]"
+                          >
+                            <div className="shadow-2xl rounded-xl border border-gray-200 overflow-hidden">
+                                <div className="fixed inset-0 z-0" onClick={() => setShowInlineEmojiPicker(false)}></div>
+                                <div className="relative z-10">
+                                    <EmojiPicker onEmojiClick={onInlineEmojiClick} theme={Theme.LIGHT} width={300} height={400} previewConfig={{ showPreview: false }} />
+                                </div>
+                            </div>
+                          </PortalTooltip>
+                        )}
+                      </div>
                    </div>
                 )}
 
@@ -1419,14 +1270,14 @@ const App: React.FC = () => {
                             Font Size
                         </div>
                         <div className="flex items-center gap-3">
-                            <span className="text-xs font-bold w-8 text-right">
-                                {selectedElement === 'title' ? currentSlide.titleFontSize || 120 : currentSlide.contentFontSize || 60}
+                            <span className="text-xs font-bold w-8 text-right font-mono">
+                                {selectedElement === 'title' ? currentSlide.titleFontSize || 120 : currentSlide.contentFontSize || 60}px
                             </span>
                             <input
                                 type="range"
                                 min={selectedElement === 'title' ? "40" : "20"}
-                                max={selectedElement === 'title' ? "250" : "150"}
-                                step="1"
+                                max={selectedElement === 'title' ? "300" : "150"}
+                                step="2"
                                 value={selectedElement === 'title' ? currentSlide.titleFontSize || 120 : currentSlide.contentFontSize || 60}
                                 onChange={(e) => handleFontSizeUpdate(currentSlide.id, selectedElement, parseInt(e.target.value))}
                                 className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
@@ -1457,8 +1308,8 @@ const App: React.FC = () => {
             )}
 
             {/* Chat Input Area */}
-            {/* ... (Chat area code remains unchanged) ... */}
             <div ref={step7Ref} className="p-4 bg-white border-b border-gray-200 min-w-[24rem] relative z-0">
+                {/* ... (Chat Content) ... */}
                 <div className="flex items-center gap-1.5 mb-2 px-1 opacity-80 hover:opacity-100 transition-opacity cursor-help">
                    <HelpCircle className="w-3 h-3 text-blue-500" />
                    <p className="text-[10px] text-gray-500 font-medium">
@@ -1485,7 +1336,6 @@ const App: React.FC = () => {
             </div>
 
             {/* Footer Buttons */}
-            {/* ... (Footer remains same) ... */}
             <div ref={step8Ref} className="p-4 bg-gray-50 border-t border-gray-200 flex flex-col gap-3 min-w-[24rem] relative">
               {showTour && currentTourStep === 8 && (<TourPopover step={8} totalSteps={9} title={t('tourStep9Title')} content={t('tourStep9Content')} onNext={handleNextStep} onPrev={handlePrevStep} onSkip={handleSkipTour} position="top" anchorRef={step8Ref} />)}
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0">{t('exportTitle')}</h3>
@@ -1499,7 +1349,7 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* ... (Main Preview Area and Modal remains same) ... */}
+      {/* MAIN PREVIEW AREA */}
       <div className="flex-1 bg-gray-100 relative overflow-hidden flex flex-col h-full">
         {/* NEW TOP BAR */}
         <div className="bg-white/80 backdrop-blur-md border-b border-gray-200 px-4 h-16 flex items-center justify-between shadow-sm z-20 shrink-0">
