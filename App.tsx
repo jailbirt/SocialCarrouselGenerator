@@ -118,6 +118,7 @@ const UI_TEXT = {
     tuningTitle: "Ajustes",
     resetPos: "Restablecer",
     fontPairing: "Fuente",
+    fontSize: "Tamaño de Texto",
     aiRewrite: "Reescribir IA",
     insertEmoji: "Insertar Emoji",
     chatPlaceholder: "Escribe instrucciones...",
@@ -183,6 +184,7 @@ const UI_TEXT = {
     tuningTitle: "Tuning",
     resetPos: "Reset Pos",
     fontPairing: "Font Pairing",
+    fontSize: "Text Size",
     aiRewrite: "AI Rewrite",
     insertEmoji: "Insert Emoji",
     chatPlaceholder: "Type instructions...",
@@ -218,7 +220,7 @@ const UI_TEXT = {
     growthTitle: "Your Carousel is Cooking!",
     growthSubtitle: "While AI works, support the creator?",
     actionFollow: "Follow for updates",
-    actionComment: "Follow for updates",
+    actionComment: "Leave a comment",
     actionSkip: "Back to my carousel",
     commentHint: "This opens my pinned post. Let me know your thoughts!"
   },
@@ -247,6 +249,7 @@ const UI_TEXT = {
     tuningTitle: "Ajustes",
     resetPos: "Redefinir",
     fontPairing: "Fonte",
+    fontSize: "Tamanho do Texto",
     aiRewrite: "Reescrever IA",
     insertEmoji: "Inserir Emoji",
     chatPlaceholder: "Digite instruções...",
@@ -577,6 +580,7 @@ const App: React.FC = () => {
   const chatInputRef = useRef<HTMLInputElement>(null);
   // NEW: Ref for inline emoji button
   const inlineEmojiBtnRef = useRef<HTMLButtonElement>(null);
+  const chatEmojiBtnRef = useRef<HTMLButtonElement>(null);
 
   // Helper for translation
   const t = (key: keyof typeof UI_TEXT['es']) => {
@@ -1362,6 +1366,29 @@ const App: React.FC = () => {
                   </div>
                 )}
 
+                {/* --- FONT SIZE CONTROL MOVED TO TOP --- */}
+                {(selectedElement === 'title' || selectedElement === 'content') && (
+                    <div className="mb-4 pt-2 border-t border-gray-100">
+                        <div className="flex justify-between text-xs text-gray-500 mb-2 font-bold uppercase tracking-wider">
+                            {t('fontSize')}
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs font-bold w-10 text-right font-mono text-blue-600 bg-blue-50 px-1 py-0.5 rounded">
+                                {selectedElement === 'title' ? currentSlide.titleFontSize || 120 : currentSlide.contentFontSize || 60}px
+                            </span>
+                            <input
+                                type="range"
+                                min={selectedElement === 'title' ? "40" : "20"}
+                                max={selectedElement === 'title' ? "300" : "150"}
+                                step="2"
+                                value={selectedElement === 'title' ? currentSlide.titleFontSize || 120 : currentSlide.contentFontSize || 60}
+                                onChange={(e) => handleFontSizeUpdate(currentSlide.id, selectedElement, parseInt(e.target.value))}
+                                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 hover:accent-blue-500 transition-all"
+                            />
+                        </div>
+                    </div>
+                )}
+
                 {(selectedElement === 'title' || selectedElement === 'content') && (
                    <div className="grid grid-cols-2 gap-2 mb-3">
                       <div className="relative flex-1 group/tooltip-wrapper"><button onClick={() => handleParaphrase(currentSlide.id, selectedElement)} disabled={isGenerating} className="w-full flex items-center justify-center gap-2 p-2.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold hover:bg-purple-100 border border-purple-100 transition-colors"><Wand2 className="w-3.5 h-3.5" /> {t('aiRewrite')}</button><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto"><HelpTooltip index={8} /></div></div>
@@ -1399,29 +1426,6 @@ const App: React.FC = () => {
                    </div>
                 )}
 
-                {/* --- FONT SIZE CONTROL --- */}
-                {(selectedElement === 'title' || selectedElement === 'content') && (
-                    <div className="mt-4 mb-2 pt-2 border-t border-gray-100">
-                        <div className="flex justify-between text-[10px] text-gray-400 mb-1 font-mono uppercase">
-                            Font Size
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="text-xs font-bold w-8 text-right font-mono">
-                                {selectedElement === 'title' ? currentSlide.titleFontSize || 120 : currentSlide.contentFontSize || 60}px
-                            </span>
-                            <input
-                                type="range"
-                                min={selectedElement === 'title' ? "40" : "20"}
-                                max={selectedElement === 'title' ? "300" : "150"}
-                                step="2"
-                                value={selectedElement === 'title' ? currentSlide.titleFontSize || 120 : currentSlide.contentFontSize || 60}
-                                onChange={(e) => handleFontSizeUpdate(currentSlide.id, selectedElement, parseInt(e.target.value))}
-                                className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                            />
-                        </div>
-                    </div>
-                )}
-
                 {selectedElement && (
                   <>
                     <div className="grid grid-cols-2 gap-3 mb-2">
@@ -1454,9 +1458,36 @@ const App: React.FC = () => {
                 </div>
                 {showTour && currentTourStep === 7 && (<TourPopover step={7} totalSteps={9} title={t('tourStep8Title')} content={t('tourStep8Content')} onNext={handleNextStep} onPrev={handlePrevStep} onSkip={handleSkipTour} position="top" anchorRef={step7Ref} />)}
                 {pendingImage && (<div className="mb-3 flex items-center gap-2 bg-blue-50 p-2 rounded-lg border border-blue-100 animate-in slide-in-from-bottom-2"><div className="w-10 h-10 rounded overflow-hidden flex-shrink-0 bg-white"><img src={pendingImage} alt="Preview" className="w-full h-full object-cover" /></div><span className="text-xs text-blue-700 flex-1 truncate font-medium">Image attached</span><button onClick={() => setPendingImage(null)} className="p-1 hover:bg-blue-100 rounded-full text-blue-700"><X className="w-4 h-4" /></button></div>)}
-                {showChatEmojiPicker && (<div className="absolute bottom-20 left-4 z-50 animate-in slide-in-from-bottom-5"><EmojiPicker onEmojiClick={onChatEmojiClick} theme={Theme.LIGHT} width={300} height={400} /></div>)}
+                
+                {/* CHAT EMOJI PICKER WITH PORTAL */}
+                {showChatEmojiPicker && (
+                  <PortalTooltip 
+                    anchorRef={chatEmojiBtnRef} 
+                    position="top" 
+                    offset={10} 
+                    className="pointer-events-auto z-[9999]"
+                  >
+                    <div className="shadow-2xl rounded-xl border border-gray-200 overflow-hidden bg-white">
+                        <div className="fixed inset-0 z-0" onClick={() => setShowChatEmojiPicker(false)}></div>
+                        <div className="relative z-10">
+                            <EmojiPicker onEmojiClick={onChatEmojiClick} theme={Theme.LIGHT} width={300} height={400} previewConfig={{ showPreview: false }} />
+                        </div>
+                    </div>
+                  </PortalTooltip>
+                )}
+
                 <form onSubmit={handleChatSubmit} className="relative flex items-center gap-2">
-                  <div className="flex gap-1"><button type="button" onClick={() => setShowChatEmojiPicker(!showChatEmojiPicker)} className={`p-3 rounded-xl transition-colors ${showChatEmojiPicker ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`} title="Add Emoji"><Smile className="w-5 h-5" /></button>{selectedElement !== 'title' && selectedElement !== 'content' && (<button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" title="Attach Image"><Paperclip className="w-5 h-5" /></button>)}</div>
+                  <div className="flex gap-1">
+                    <button 
+                      type="button" 
+                      ref={chatEmojiBtnRef}
+                      onClick={() => setShowChatEmojiPicker(!showChatEmojiPicker)} 
+                      className={`p-3 rounded-xl transition-colors ${showChatEmojiPicker ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`} 
+                      title="Add Emoji"
+                    >
+                      <Smile className="w-5 h-5" />
+                    </button>
+                    {selectedElement !== 'title' && selectedElement !== 'content' && (<button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" title="Attach Image"><Paperclip className="w-5 h-5" /></button>)}</div>
                   <div className="relative flex-1"><input ref={chatInputRef} type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onSelect={(e) => setCursorPosition(e.currentTarget.selectionStart)} onClick={(e) => setCursorPosition(e.currentTarget.selectionStart)} onKeyUp={(e) => setCursorPosition(e.currentTarget.selectionStart)} onPaste={handlePaste} onFocus={() => { if (!selectedElement) setShowChatEmojiPicker(false) }} placeholder={getChatPlaceholder()} className="w-full pl-4 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm transition-all" /></div>
                   <button type="submit" disabled={(!chatInput.trim() && !pendingImage) || isGenerating} className="p-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-xl transition-colors shadow-sm"><Send className="w-5 h-5" /></button>
                   <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
