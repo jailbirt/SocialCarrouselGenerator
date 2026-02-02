@@ -247,21 +247,27 @@ export const SlideView: React.FC<SlideViewProps> = ({
     const showRawTitle = isEditable && selectedElement === 'title';
     const showRawContent = isEditable && selectedElement === 'content';
 
+    // Default font sizes if undefined
+    const titleFontSize = slide.titleFontSize || 120;
+    const contentFontSize = slide.contentFontSize || 60;
+
     // Standard leading for consistency
     const leadingClass = 'leading-tight';
     
-    // Removed 'text-gray-600' to allow palette.text to take effect via style
-    const titleClass = `text-9xl font-bold ${leadingClass} outline-none whitespace-pre-line tracking-tight py-4 relative z-20`;
-    const contentClass = `text-6xl leading-normal font-medium outline-none whitespace-pre-line py-2 relative z-20`;
+    // Base classes without Tailwind font sizes
+    const titleClass = `font-bold ${leadingClass} outline-none whitespace-pre-line tracking-tight py-4 relative z-20`;
+    const contentClass = `leading-normal font-medium outline-none whitespace-pre-line py-2 relative z-20`;
 
-    // DYNAMIC FONT STYLES
+    // DYNAMIC FONT STYLES (Apply Font Size Here)
     const titleStyle = { 
         color: palette.text, 
-        fontFamily: slide.fontPair?.title || "'Space Grotesk', sans-serif" 
+        fontFamily: slide.fontPair?.title || "'Space Grotesk', sans-serif",
+        fontSize: `${titleFontSize}px`
     };
     const contentStyle = { 
         color: palette.text, 
-        fontFamily: slide.fontPair?.body || "'Inter', sans-serif" 
+        fontFamily: slide.fontPair?.body || "'Inter', sans-serif",
+        fontSize: `${contentFontSize}px`
     };
     
     // Alignment Class
@@ -320,7 +326,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
               <div className={`flex-none pt-4 flex justify-center relative z-20 ${alignClass}`} style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
                   data-type="title"
-                  className={`text-7xl font-bold ${leadingClass} outline-none whitespace-pre-line max-w-4xl py-2`}
+                  className={`${titleClass} max-w-4xl py-2`}
                   style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
@@ -347,7 +353,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
               <div className={`flex-none pb-8 flex justify-center relative z-20 ${alignClass}`} style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
                   data-type="content"
-                  className={`text-5xl leading-normal font-medium outline-none whitespace-pre-line max-w-3xl py-2`}
+                  className={`${contentClass} max-w-3xl py-2`}
                   style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
@@ -380,7 +386,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
               <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
                   data-type="title"
-                  className={`text-8xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
+                  className={`${titleClass} py-2`}
                   style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
@@ -399,7 +405,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
               <div className="w-full max-w-3xl" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
                   data-type="content"
-                  className={`text-6xl leading-normal font-medium outline-none whitespace-pre-line py-2`}
+                  className={`${contentClass} py-2`}
                   style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning
@@ -428,7 +434,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
               <div className="w-full" style={getElementStyle('title')} onClick={(e) => handleElementClick(e, 'title')}>
                 <h2 
                   data-type="title"
-                  className={`text-8xl font-bold ${leadingClass} outline-none whitespace-pre-line py-2`}
+                  className={`${titleClass} py-2`}
                   style={titleStyle}
                   contentEditable={isEditable && selectedElement === 'title'}
                   suppressContentEditableWarning
@@ -447,7 +453,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
               <div className="w-full max-w-3xl" style={getElementStyle('content')} onClick={(e) => handleElementClick(e, 'content')}>
                 <div 
                   data-type="content"
-                  className={`text-6xl leading-normal font-medium outline-none whitespace-pre-line py-2`}
+                  className={`${contentClass} py-2`}
                   style={contentStyle}
                   contentEditable={isEditable && selectedElement === 'content'}
                   suppressContentEditableWarning

@@ -35,6 +35,11 @@ export interface Slide {
   // New positioning properties
   titlePos: Position;
   contentPos: Position;
+  
+  // New Font Size Properties
+  titleFontSize?: number;
+  contentFontSize?: number;
+
   imagePos: Position;
   textAlign: 'left' | 'center' | 'right';
   
